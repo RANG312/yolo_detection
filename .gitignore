@@ -214,3 +214,12 @@ data/
 # local training runs
 runs/train/dial_thermometer_20260401_113733/
 runs/train/meter_data_9k_yolov8m_2026*/
+
+# keep deployment models in git
+!runs/
+!runs/train/
+!runs/train/best_fire.pt
+!runs/train/best_person.pt
+!runs/train/meter_data_9k_yolov8m_best/
+!runs/train/meter_data_9k_yolov8m_best/weights/
+!runs/train/meter_data_9k_yolov8m_best/weights/best.pt

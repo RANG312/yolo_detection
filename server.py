@@ -20,7 +20,7 @@ from ultralytics import YOLO
 from dial_reading import load_model, predict_image_instances, save_canvas
 
 
-DEFAULT_MODEL_PATH = "runs/train/meter_data_9k_yolov8m_20260407_145946/weights/best.pt"
+DEFAULT_MODEL_PATH = "runs/train/meter_data_9k_yolov8m_best/weights/best.pt"
 DEFAULT_FIRE_MODEL_PATH = "runs/train/best_fire.pt"
 DEFAULT_SAFEHAT_MODEL_PATH = "runs/train/best_person.pt"
 DEFAULT_MIN_VALUE = 0.0
