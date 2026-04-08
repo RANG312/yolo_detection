@@ -203,3 +203,14 @@ calibration_*.npy
 # Training logs
 args.yaml
 results.csv
+
+# running resutls
+results/
+results/dial_reading_batch_*
+
+# local datasets
+data/
+
+# local training runs
+runs/train/dial_thermometer_20260401_113733/
+runs/train/meter_data_9k_yolov8m_2026*/

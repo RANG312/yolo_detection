@@ -68,12 +68,21 @@ class ONNXBackend(BaseBackend):
                     self.device = torch.device("cpu")
                     cuda = False
 
-            LOGGER.info(
-                f"Using ONNX Runtime {onnxruntime.__version__} with "
-                f"{providers[0] if isinstance(providers[0], str) else providers[0][0]}"
-            )
+            try:
+                self.session = onnxruntime.InferenceSession(weight, providers=providers)
+            except Exception as e:
+                requested_provider = providers[0] if isinstance(providers[0], str) else providers[0][0]
+                if requested_provider == "CUDAExecutionProvider":
+                    LOGGER.warning(f"Failed to create ONNX Runtime CUDA session: {e}. Falling back to CPU...")
+                    providers = ["CPUExecutionProvider"]
+                    self.device = torch.device("cpu")
+                    cuda = False
+                    self.session = onnxruntime.InferenceSession(weight, providers=providers)
+                else:
+                    raise
 
-            self.session = onnxruntime.InferenceSession(weight, providers=providers)
+            active_provider = self.session.get_providers()[0] if self.session.get_providers() else "UnknownExecutionProvider"
+            LOGGER.info(f"Using ONNX Runtime {onnxruntime.__version__} with {active_provider}")
             self.output_names = [x.name for x in self.session.get_outputs()]
 
             # Get metadata
