@@ -223,3 +223,5 @@ runs/train/meter_data_9k_yolov8m_2026*/
 !runs/train/meter_data_9k_yolov8m_best/
 !runs/train/meter_data_9k_yolov8m_best/weights/
 !runs/train/meter_data_9k_yolov8m_best/weights/best.pt
+
+.codex

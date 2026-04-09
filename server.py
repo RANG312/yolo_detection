@@ -19,36 +19,36 @@ from ultralytics import YOLO
 
 from dial_reading import load_model, predict_image_instances, save_canvas
 
+# 默认参数配置
+DEFAULT_METER_MODEL_PATH = "runs/train/meter_data_9k_yolov8m_best/weights/best.pt"    # 指针表计读数权重路径
+DEFAULT_FIRE_MODEL_PATH = "runs/train/best_fire.pt"     # 火源检测权重路径 
+DEFAULT_SAFEHAT_MODEL_PATH = "runs/train/best_person.pt"    # 安全帽检测权重路径
+DEFAULT_MIN_VALUE = 0.0     # 指针读数任务表盘起始刻度
+DEFAULT_MAX_VALUE = 1.0     # 指针读数任务表盘末端刻度， 默认设为1（归一化）
+DEFAULT_IMGSZ = 640     # YOLO模型处理图片分辨率
+DEFAULT_CONF = 0.25     # 默认置信度
+DEFAULT_DEVICE = "0"    # 默认推理设备，GPU 0
+DEFAULT_HOST = "0.0.0.0"    # HTTP服务地址
+DEFAULT_PORT = 3208     # HTTP服务端口
+DEFAULT_CALLBACK_PORT = 18080   # CALLBACK 端口
+DEFAULT_CALLBACK_PATH = "/api/v1/recognition/callback"  # CALLBACK地址
+DEFAULT_RESULT_ROOT = Path("results/http_service")   # 结果保存路径
+DEFAULT_REQUEST_TIMEOUT = 15    # 设置允许timeout时长
 
-DEFAULT_MODEL_PATH = "runs/train/meter_data_9k_yolov8m_best/weights/best.pt"
-DEFAULT_FIRE_MODEL_PATH = "runs/train/best_fire.pt"
-DEFAULT_SAFEHAT_MODEL_PATH = "runs/train/best_person.pt"
-DEFAULT_MIN_VALUE = 0.0
-DEFAULT_MAX_VALUE = 1.0
-DEFAULT_IMGSZ = 640
-DEFAULT_CONF = 0.25
-DEFAULT_DEVICE = "0"
-DEFAULT_HOST = "0.0.0.0"
-DEFAULT_PORT = 3208
-DEFAULT_CALLBACK_PORT = 18080
-DEFAULT_CALLBACK_PATH = "/api/v1/recognition/callback"
-DEFAULT_RESULT_ROOT = Path("results/http_service")
-DEFAULT_REQUEST_TIMEOUT = 15
-
-RECOGNIZE_TYPE_METER = "1"
-RECOGNIZE_TYPE_FIRE = "6"
-RECOGNIZE_TYPE_SAFEHAT = "7"
+RECOGNIZE_TYPE_METER = "1"      # 表计读数任务"recognize_type"键值
+RECOGNIZE_TYPE_FIRE = "6"       # 火源检测任务"recognize_type"键值
+RECOGNIZE_TYPE_SAFEHAT = "7"    # 安全帽识别任务"recognize_type"键值
 TASK_KIND_METER = "meter"
 TASK_KIND_FIRE = "fire"
 TASK_KIND_SAFEHAT = "safehat"
-DEFAULT_DATA_TYPE = {"recognize_type": RECOGNIZE_TYPE_METER, "recognize_subtype": "default"}
-
+DEFAULT_DATA_TYPE = {"recognize_type": RECOGNIZE_TYPE_METER, "recognize_subtype": "default"}    # 拼接请求体内参
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Dial reading HTTP service.")
+    # 解析服务启动参数
+    parser = argparse.ArgumentParser(description="Recognition HTTP service.")
     parser.add_argument("--host", default=DEFAULT_HOST, help="Server bind host.")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT, help="Server bind port.")
-    parser.add_argument("--model", default=DEFAULT_MODEL_PATH, help="Model path (.pt or .onnx).")
+    parser.add_argument("--model", default=DEFAULT_METER_MODEL_PATH, help="Meter model path (.pt or .onnx).")
     parser.add_argument("--fire-model", default=DEFAULT_FIRE_MODEL_PATH, help="Fire detection model path (.pt or .onnx).")
     parser.add_argument(
         "--safehat-model", default=DEFAULT_SAFEHAT_MODEL_PATH, help="Safehat/person detection model path (.pt or .onnx)."
@@ -65,16 +65,16 @@ def parse_args() -> argparse.Namespace:
     )
     return parser.parse_args()
 
-
 def now_text() -> str:
+    # 返回当前时间字符串
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-
 def split_image_paths(image_path_value: str) -> list[str]:
+    # 将逗号分隔的图片路径拆成列表
     return [item.strip() for item in image_path_value.split(",") if item.strip()]
 
-
 def parse_extra_info(extra_info: Any) -> dict[str, Any]:
+    # 解析 extra_info，兼容 dict 和 JSON 字符串
     if extra_info in (None, "", {}):
         return {}
     if isinstance(extra_info, dict):
@@ -89,24 +89,24 @@ def parse_extra_info(extra_info: Any) -> dict[str, Any]:
         return parsed
     raise ValueError("extra_info must be an object or a JSON string.")
 
-
 def is_http_url(value: str) -> bool:
+    # 判断路径是否为 HTTP/HTTPS URL
     parsed = urlparse(value)
     return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
 
-
 def make_filename_from_url(url: str, fallback: str) -> str:
+    # 从 URL 提取文件名，提取失败时使用兜底名称
     path_name = Path(urlparse(url).path).name
     if path_name:
         return path_name
     return fallback
 
-
 def build_callback_url(callback_host: str, callback_port: int) -> str:
+    # 根据客户端地址和固定端口拼接回调地址
     return f"http://{callback_host}:{callback_port}{DEFAULT_CALLBACK_PATH}"
 
-
 def resolve_task_kind(recognize_type: str) -> str:
+    # 将 recognize_type 映射为内部任务类型
     recognize_type_text = str(recognize_type).strip()
     if recognize_type_text in {RECOGNIZE_TYPE_METER, "dict_meter_type"}:
         return TASK_KIND_METER
@@ -116,8 +116,8 @@ def resolve_task_kind(recognize_type: str) -> str:
         return TASK_KIND_SAFEHAT
     raise ValueError(f"Unsupported recognize_type: {recognize_type_text}")
 
-
 def normalize_data_types(data_types: Any) -> list[dict[str, str]]:
+    # 标准化请求中的 data_type 列表，并补齐默认值
     if not data_types:
         return [DEFAULT_DATA_TYPE.copy()]
     if not isinstance(data_types, list):
@@ -139,8 +139,8 @@ def normalize_data_types(data_types: Any) -> list[dict[str, str]]:
         normalized.append({"recognize_type": recognize_type, "recognize_subtype": recognize_subtype})
     return normalized
 
-
 def align_data_types_to_images(image_paths: list[str], data_types: list[dict[str, str]]) -> list[dict[str, str]]:
+    # 将 data_type 与图片列表对齐，支持单个检测项复用到多张图
     if not image_paths:
         raise ValueError("image_path is required and must contain at least one image.")
     if not data_types:
@@ -152,13 +152,25 @@ def align_data_types_to_images(image_paths: list[str], data_types: list[dict[str
     return [item.copy() for item in data_types]
 
 
-def build_predict_args(
+def build_meter_predict_args(
     config: argparse.Namespace,
     save_path: Path,
     min_value: float,
     max_value: float,
     debug_center: bool,
 ) -> SimpleNamespace:
+    """
+    构造传给 dial_reading.py 的预测参数对象。
+
+    当前表计读数仍然复用 dial_reading.py 中的推理与几何后处理逻辑，
+    但 server.py 自身并不直接解析 argparse 命令行参数，因此这里将服
+    务启动参数重新封装成 SimpleNamespace，保持与原预测代码的调用
+    方式一致。
+
+    参数中的 save、imgsz、conf、device 等字段会直接影响表计推理；
+    annotation_mode 由 load_model 自动识别，决定读数后处理走哪套标注
+    规则。
+    """
     return SimpleNamespace(
         imgsz=config.imgsz,
         conf=config.conf,
@@ -178,6 +190,7 @@ def build_predict_args(
 
 
 def build_success_data_entry(data_type: dict[str, str], reading: float, desc: str) -> dict[str, str]:
+    # 构造单条成功识别结果
     return {
         "recognize_type": data_type["recognize_type"],
         "recognize_subtype": data_type["recognize_subtype"],
@@ -188,6 +201,7 @@ def build_success_data_entry(data_type: dict[str, str], reading: float, desc: st
 
 
 def build_error_data_entry(data_type: dict[str, str], error_text: str) -> dict[str, str]:
+    # 构造单条失败识别结果
     return {
         "recognize_type": data_type["recognize_type"],
         "recognize_subtype": data_type["recognize_subtype"],
@@ -199,6 +213,7 @@ def build_error_data_entry(data_type: dict[str, str], error_text: str) -> dict[s
 
 @dataclass
 class TaskState:
+    # 记录任务生命周期内的状态与回调信息
     req_id: str
     callback_host: str
     status: str = "pending"
@@ -211,8 +226,20 @@ class TaskState:
     error: str | None = None
 
 
-class DialReadingService:
+class RecognitionService:
     def __init__(self, config: argparse.Namespace) -> None:
+        """
+        初始化识别服务。
+
+        这里会完成三类模型的加载：
+        1. 表计读数模型
+        2. 火源检测模型
+        3. 安全帽检测模型
+
+        同时初始化输入输出目录、任务状态表，以及一个全局预测锁。
+        预测锁的作用是避免多线程同时抢占模型推理资源，降低显存竞争和
+        推理过程中的不确定性，尤其适合 Jetson 这类边缘设备部署场景。
+        """
         self.config = config
         self.result_root = config.result_root
         self.result_root.mkdir(parents=True, exist_ok=True)
@@ -229,6 +256,19 @@ class DialReadingService:
         self._predict_lock = threading.Lock()
 
     def create_task(self, payload: dict[str, Any], callback_host: str) -> TaskState:
+        """
+        创建异步识别任务并立即返回。
+
+        该方法只负责参数校验、任务注册和后台线程启动，不在当前 HTTP
+        请求线程中执行真正的模型推理。这样客户端提交任务后可以立即得
+        到 accepted 响应，后续结果通过回调接口异步返回。
+
+        这里会重点校验：
+        - image_path 是否存在且非空
+        - data_type 是否合法
+        - 多张图片与 data_type 的映射关系是否符合“一图一检测项”规则
+        - extra_info 是否可被解析
+        """
         req_id = str(payload.get("req_id") or uuid4())
         image_path_value = payload.get("image_path")
         if not isinstance(image_path_value, str) or not image_path_value.strip():
@@ -250,10 +290,12 @@ class DialReadingService:
         return task
 
     def get_task(self, req_id: str) -> TaskState | None:
+        # 按 req_id 查询任务状态
         with self._tasks_lock:
             return self._tasks.get(req_id)
 
     def _update_task(self, req_id: str, **updates: Any) -> None:
+        # 原子更新任务状态，并刷新更新时间
         with self._tasks_lock:
             task = self._tasks[req_id]
             for key, value in updates.items():
@@ -261,6 +303,17 @@ class DialReadingService:
             task.updated_at = now_text()
 
     def _process_task(self, req_id: str) -> None:
+        """
+        后台执行整个识别任务。
+
+        一个任务可能包含多张图片。当前业务规则为：
+        - 一张图只做一种检测
+        - 如果 data_type 只有一项，则复用到所有图片
+        - 如果 data_type 有多项，则按顺序与图片一一对应
+
+        该方法会逐张图调用 _process_single_image，汇总成 data_result，
+        最后统一构造回调 payload 并发送给客户端。
+        """
         task = self.get_task(req_id)
         if task is None:
             return
@@ -307,6 +360,21 @@ class DialReadingService:
         extra_info: dict[str, Any],
         debug_center: bool,
     ) -> dict[str, Any]:
+        """
+        处理单张图片的识别流程。
+
+        单张图进入这里后，会先完成图片准备：
+        - 若是 HTTP URL，则下载到本地临时目录
+        - 若是本地路径，则直接校验并读取
+
+        之后根据 data_type 中的 recognize_type 选择具体模型：
+        - 1 -> 表计读数
+        - 6 -> 火源检测
+        - 7 -> 安全帽检测
+
+        最终返回该图片对应的一条 data_result 记录，其中包含原图路径、
+        结果图路径以及 recognize_data 列表。
+        """
         local_image_path = self._prepare_image(req_id, index, image_path)
         image_output_dir = self.output_root / req_id
         image_output_dir.mkdir(parents=True, exist_ok=True)
@@ -365,7 +433,18 @@ class DialReadingService:
         visualize_path: Path,
         debug_center: bool,
     ) -> list[dict[str, str]]:
-        predict_args = build_predict_args(self.config, visualize_path, DEFAULT_MIN_VALUE, DEFAULT_MAX_VALUE, debug_center)
+        """
+        执行表计读数任务。
+
+        表计任务不是简单的目标检测，而是先通过 YOLO 定位表盘关键元素，
+        再在 dial_reading.py 中完成几何后处理，计算得到归一化读数。
+
+        返回结果中：
+        - recognize_value 为归一化读数
+        - confidence 当前固定为 100
+        - recognize_desc 中会附带 meter_index 和 arc_mode
+        """
+        predict_args = build_meter_predict_args(self.config, visualize_path, DEFAULT_MIN_VALUE, DEFAULT_MAX_VALUE, debug_center)
         with self._predict_lock:
             canvas, prediction_instances, _, _ = predict_image_instances(
                 local_image_path, self.meter_model, predict_args, self.config.annotation_mode
@@ -399,6 +478,19 @@ class DialReadingService:
         visualize_path: Path,
         task_desc: str,
     ) -> list[dict[str, str]]:
+        """
+        执行通用目标检测任务。
+
+        该方法同时服务于火源检测和安全帽检测两类场景。处理过程为：
+        1. 使用对应 YOLO 模型对整图推理
+        2. 将检测框绘制到结果图
+        3. 把每个检测框组织为一条 recognize_data 记录
+
+        对检测类任务来说：
+        - recognize_value 为类别名
+        - confidence 为模型置信度百分比
+        - meter_index 表示第几个检测框
+        """
         image = cv2.imread(str(local_image_path))
         if image is None:
             raise FileNotFoundError(f"Cannot read image: {local_image_path}")
@@ -439,6 +531,15 @@ class DialReadingService:
         return recognize_items
 
     def _prepare_image(self, req_id: str, index: int, image_path: str) -> Path:
+        """
+        准备待识别图片并返回本地路径。
+
+        支持两种输入：
+        - HTTP/HTTPS 图片地址：先下载到 results/http_service/inputs/<req_id>/
+        - 本地图片路径：直接解析为绝对路径并校验存在性
+
+        这样下游推理逻辑始终只需要处理本地文件路径。
+        """
         task_input_dir = self.input_root / req_id
         task_input_dir.mkdir(parents=True, exist_ok=True)
 
@@ -458,14 +559,20 @@ class DialReadingService:
         return local_path
 
     def _send_callback(self, req_id: str, callback_url: str, callback_payload: dict[str, Any]) -> None:
+        """
+        向客户端发送回调结果。
+
+        回调失败不会影响任务本身的 finished 状态，但会把异常记录到任务
+        状态中，便于后续通过查询接口定位问题。
+        """
         try:
             response = requests.post(callback_url, json=callback_payload, timeout=self.config.request_timeout)
             self._update_task(req_id, callback_status_code=response.status_code, callback_error=None)
         except Exception as exc:
             self._update_task(req_id, callback_error=str(exc))
 
-
 def make_error_payload(req_id: str | None, message: str, status: str = "finished") -> dict[str, Any]:
+    # 构造统一错误响应体
     return {
         "req_id": req_id,
         "code": 1,
@@ -475,9 +582,16 @@ def make_error_payload(req_id: str | None, message: str, status: str = "finished
 
 
 class RecognitionHandler(BaseHTTPRequestHandler):
-    server: "RecognitionHTTPServer"
+    server: "RecognitionAPIServer"
 
     def do_GET(self) -> None:  # noqa: N802
+        """
+        处理 GET 请求。
+
+        支持两个接口：
+        - /health：健康检查
+        - /api/v1/recognition/tasks/{req_id}：查询任务状态
+        """
         if self.path == "/health":
             self._send_json(
                 HTTPStatus.OK,
@@ -511,6 +625,13 @@ class RecognitionHandler(BaseHTTPRequestHandler):
         self._send_json(HTTPStatus.NOT_FOUND, make_error_payload(None, "Path not found."))
 
     def do_POST(self) -> None:  # noqa: N802
+        """
+        处理 POST 请求。
+
+        当前只开放 /api/v1/recognition/tasks，用于提交异步识别任务。
+        提交成功后不阻塞等待推理完成，而是立即返回 processing 状态，
+        真正结果由后台线程完成后通过 callback 接口回传。
+        """
         if self.path != "/api/v1/recognition/tasks":
             self._send_json(HTTPStatus.NOT_FOUND, make_error_payload(None, "Path not found."))
             return
@@ -540,6 +661,7 @@ class RecognitionHandler(BaseHTTPRequestHandler):
         self._send_json(HTTPStatus.OK, response)
 
     def _get_callback_host(self) -> str:
+        # 从代理头或客户端连接信息中推断回调主机地址
         forwarded_for = self.headers.get("X-Forwarded-For", "").strip()
         if forwarded_for:
             return forwarded_for.split(",")[0].strip()
@@ -549,11 +671,13 @@ class RecognitionHandler(BaseHTTPRequestHandler):
         return self.client_address[0]
 
     def log_message(self, format: str, *args: Any) -> None:
+        # 自定义 HTTP 访问日志格式
         timestamp = now_text()
         message = format % args
         print(f"[{timestamp}] {self.address_string()} {message}")
 
     def _read_json_body(self) -> dict[str, Any]:
+        # 读取并校验 JSON 请求体
         content_length = int(self.headers.get("Content-Length", "0"))
         if content_length <= 0:
             raise ValueError("Request body is empty.")
@@ -573,6 +697,7 @@ class RecognitionHandler(BaseHTTPRequestHandler):
         return payload
 
     def _send_json(self, status_code: int, payload: dict[str, Any]) -> None:
+        # 发送 JSON 响应
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         self.send_response(status_code)
         self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -581,17 +706,24 @@ class RecognitionHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
 
-class RecognitionHTTPServer(ThreadingHTTPServer):
-    def __init__(self, server_address: tuple[str, int], request_handler_class: type[RecognitionHandler], service: DialReadingService):
+class RecognitionAPIServer(ThreadingHTTPServer):
+    def __init__(self, server_address: tuple[str, int], request_handler_class: type[RecognitionHandler], service: RecognitionService):
+        # 注入业务服务实例，供 Handler 访问
         super().__init__(server_address, request_handler_class)
         self.service = service
 
 
 def main() -> None:
+    """
+    服务入口函数。
+
+    负责解析启动参数、初始化业务服务、创建 HTTP Server 并开始监听。
+    启动时会打印当前加载的模型路径和表计标注模式，便于部署排查。
+    """
     args = parse_args()
     args.result_root = args.result_root.resolve()
-    service = DialReadingService(args)
-    server = RecognitionHTTPServer((args.host, args.port), RecognitionHandler, service)
+    service = RecognitionService(args)
+    server = RecognitionAPIServer((args.host, args.port), RecognitionHandler, service)
     print(f"[{now_text()}] meter model loaded: {args.model}")
     print(f"[{now_text()}] fire model loaded: {args.fire_model}")
     print(f"[{now_text()}] safehat model loaded: {args.safehat_model}")

@@ -42,7 +42,7 @@
 
 `server.py` 启动时会一次性加载 3 个模型：
 
-- 表计模型：默认 `runs/train/meter_data_9k_yolov8m_20260407_145946/weights/best.pt`
+- 表计模型：默认 `runs/train/meter_data_9k_yolov8m_best/weights/best.pt`
 - 火源模型：默认 `runs/train/best_fire.pt`
 - 安全帽模型：默认 `runs/train/best_person.pt`
 
@@ -239,31 +239,63 @@ results/http_service/outputs/<req_id>/
 - `confidence`：置信度百分比整数
 
 
-### 2.9 单张图片里多种识别混合请求
+### 2.9 多张图片与检测项的对应关系
 
-一个请求中的 `data_type` 可以同时包含多种识别类型，例如：
+当前业务规则是：一张图只做一种检测。
+
+如果一个请求里有多张图片，则有两种写法。
+
+第一种：只给 1 个 `data_type`，表示所有图片都做同一种检测，例如：
 
 ```json
 [
-  {"recognize_type": "1", "recognize_subtype": "3"},
-  {"recognize_type": "6", "recognize_subtype": ""},
-  {"recognize_type": "7", "recognize_subtype": ""}
+  {"recognize_type": "6", "recognize_subtype": ""}
 ]
 ```
 
-服务端会按类型分组后依次执行：
+如果请求中有：
 
-- 先表计
-- 再火源
-- 再安全帽
+```json
+{
+  "image_path": "a.jpg,b.jpg,c.jpg",
+  "data_type": [
+    {"recognize_type": "6", "recognize_subtype": ""}
+  ]
+}
+```
 
-每类识别产生的结果都会追加到同一个 `recognize_data` 数组里。
+则等价于：
+
+- `a.jpg` 做火源检测
+- `b.jpg` 做火源检测
+- `c.jpg` 做火源检测
+
+第二种：给多个 `data_type`，则必须与图片数量一致，并且按顺序一一对应，例如：
+
+```json
+{
+  "image_path": "a.jpg,b.jpg,c.jpg",
+  "data_type": [
+    {"recognize_type": "1", "recognize_subtype": "3"},
+    {"recognize_type": "6", "recognize_subtype": ""},
+    {"recognize_type": "7", "recognize_subtype": ""}
+  ]
+}
+```
+
+其对应关系是：
+
+- `a.jpg` -> 表计读数
+- `b.jpg` -> 火源检测
+- `c.jpg` -> 安全帽检测
+
+如果 `image_path` 数量和 `data_type` 数量都大于 1，但两者不相等，服务端会直接报错。
 
 注意：
 
-- `image_path_result` 最终保存的是最后一次执行的结果图路径
-- 如果同一张图同时跑多类识别，目前不会把三类检测结果合成到一张总图里
-- 当前实现更偏向“同一请求支持多类型结果返回”，而不是“多模型结果叠加出统一可视化图”
+- 当前不会对同一张图叠加执行多种识别
+- `recognize_data` 只描述当前图片所属检测项的结果
+- `image_path_result` 是当前图片对应检测项的结果图路径
 
 
 ### 2.10 返回结果结构
@@ -546,7 +578,7 @@ python3 server.py
 
 ```bash
 python3 server.py \
-  --model runs/train/meter_data_9k_yolov8m_20260407_145946/weights/best.pt \
+  --model runs/train/meter_data_9k_yolov8m_best/weights/best.pt \
   --fire-model runs/train/best_fire.pt \
   --safehat-model runs/train/best_person.pt
 ```
@@ -579,13 +611,13 @@ python3 test_http.py \
 ```
 
 
-### 4.5 自定义混合请求
+### 4.5 多图按顺序对应不同检测项
 
-同一张图同时测试多种识别：
+下面这个请求表示 3 张图分别做 3 种不同检测：
 
 ```bash
 python3 test_http.py \
-  --images /path/to/test.jpg \
+  --images /path/to/meter.jpg /path/to/fire.jpg /path/to/safehat.jpg \
   --data-type 1:3 \
   --data-type 6 \
   --data-type 7
@@ -619,14 +651,15 @@ results/http_service/
 如果后续要按不同表计 subtype 映射成真实量程，需要再加一层业务换算逻辑。
 
 
-### 6.2 混合场景下的 image_path_result 不是合成图
+### 6.2 多图混合场景依赖顺序对应
 
-如果一个请求同时包含表计、火源、安全帽三类识别：
+如果一个请求里有多张图片且 `data_type` 传了多项，那么当前逻辑严格按顺序绑定：
 
-- `recognize_data` 会汇总三类结果
-- 但 `image_path_result` 只会保留最后一次执行的结果图路径
+- 第 1 张图对应第 1 个 `data_type`
+- 第 2 张图对应第 2 个 `data_type`
+- 以此类推
 
-如果后续需要统一叠加显示，需要单独增加“多模型结果合成绘图”逻辑。
+因此调用方必须自己保证顺序正确。
 
 
 ### 6.3 表计 confidence 当前固定为100
@@ -659,4 +692,3 @@ http://<callback_host>:18080/api/v1/recognition/callback
 - 支持多模型结果叠加输出到同一张结果图
 - 支持直接从请求中读取显式 callback URL
 - 为 `test_http.py` 增加示例图片和批量测试能力
-

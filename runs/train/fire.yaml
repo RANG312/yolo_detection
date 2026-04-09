@@ -1,0 +1,7 @@
+train: /home/wl/Downloads/yolov8_model/fire_dataset/images/train
+val: /home/wl/Downloads/yolov8_model/fire_dataset/images/val/
+test: /home/wl/Downloads/yolov8_model/fire_dataset/images/test/
+
+nc: 2
+
+names: ['fire','smoke']

@@ -1,0 +1,7 @@
+train: /home/wl/Downloads/yolov8_model/yolov8-safehat_detection-main/dataset/archive/css-data/train/images/
+val: /home/wl/Downloads/yolov8_model/yolov8-safehat_detection-main/dataset/archive/css-data/valid/images/
+test: /home/wl/Downloads/yolov8_model/yolov8-safehat_detection-main/dataset/archive/css-data/test/images/
+
+nc: 10
+
+names: [Hardhat, Mask, NO-Hardhat, NO-Mask, NO-Safety Vest, Person, Safety Cone, Safety Vest, machinery, vehicle]
