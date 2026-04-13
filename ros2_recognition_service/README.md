@@ -288,6 +288,7 @@ bash deploy_ros2_ws.sh
 - 先激活 conda 环境 `yolo-jetson`
 - 再 `source /opt/ros/<发行版>/setup.bash`
 - 再 `source ~/ros2_ws/install/setup.bash`
+- 如果 workspace 顶层 setup 没把包叠加进环境，会自动 fallback 到包级 `local_setup.bash`
 
 如果不想自动激活 conda，可以在执行前设置：
 
