@@ -148,7 +148,9 @@ image_recognize_subtype: "${IMAGE_RECOGNIZE_SUBTYPE}"
 EOF
 
 echo "[1/3] Sourcing ROS 2 environment: /opt/ros/${ROS_DISTRO_NAME}/setup.bash"
+set +u
 source "/opt/ros/${ROS_DISTRO_NAME}/setup.bash"
+set -u
 
 echo "[2/3] Building workspace: ${WORKSPACE_DIR}"
 cd "${WORKSPACE_DIR}"
