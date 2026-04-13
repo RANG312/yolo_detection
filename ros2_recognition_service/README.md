@@ -46,6 +46,11 @@ ros2_recognition_service/
 - `SubmitRecognitionTask.srv` 用于提交任务
 - `GetRecognitionTask.srv` 用于按 `req_id` 查询任务状态
 
+默认约定：
+
+- 编译 ROS 2 包时使用系统 Python
+- 启动识别服务时自动激活 conda 环境 `yolo-jetson`
+
 ## 2. 工作流程
 
 这个节点是异步处理模型推理的，流程和原 HTTP 服务基本一致：
@@ -278,6 +283,24 @@ bash deploy_ros2_ws.sh
 - `ros2_recognition_service/source_ros2_ws.bash`
 - `ros2_recognition_service/launch_recognition_service.sh`
 
+这两个脚本默认会：
+
+- 先激活 conda 环境 `yolo-jetson`
+- 再 `source /opt/ros/<发行版>/setup.bash`
+- 再 `source ~/ros2_ws/install/setup.bash`
+
+如果不想自动激活 conda，可以在执行前设置：
+
+```bash
+USE_CONDA_ENV=0 ./launch_recognition_service.sh
+```
+
+如果 conda 环境名不是 `yolo-jetson`，可以覆盖：
+
+```bash
+CONDA_ENV_NAME=你的环境名 ./launch_recognition_service.sh
+```
+
 如果需要自定义 workspace 或订阅话题，可以例如：
 
 ```bash
@@ -293,7 +316,7 @@ bash deploy_ros2_ws.sh \
 如果你在 Jetson 上同时使用 conda 环境做推理，建议遵循这个规则：
 
 - 编译 ROS 2 包时使用系统 Python，例如 `/usr/bin/python3`
-- 运行识别服务时再按需要激活 conda 环境
+- 运行识别服务时激活 conda 环境，例如 `yolo-jetson`
 
 如果你需要手动编译，也可以按下面步骤执行。
 
