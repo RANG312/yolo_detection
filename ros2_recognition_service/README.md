@@ -39,6 +39,7 @@ ros2_recognition_service/
 
 - `node.py` 是 ROS 2 节点入口
 - `config/recognition.yaml` 是推荐修改的启动配置文件
+- `deploy_ros2_ws.sh` 可从当前 `ultralytics` 源码目录自动创建并编译 ROS 2 workspace
 - `launch/recognition.launch.py` 是推荐使用的启动入口
 - `SubmitRecognitionTask.srv` 用于提交任务
 - `GetRecognitionTask.srv` 用于按 `req_id` 查询任务状态
@@ -244,6 +245,35 @@ export RECOGNITION_REPO_ROOT=/你的/ultralytics/仓库路径
 ```
 
 ## 7. 编译
+
+如果客户机器上拿到的是完整 `ultralytics` 源码目录，推荐优先使用自动部署脚本：
+
+```bash
+cd /你的/ultralytics/仓库路径/ros2_recognition_service
+bash deploy_ros2_ws.sh
+```
+
+脚本会自动完成：
+
+- 创建 ROS 2 workspace
+- 挂载 `ros2_recognition_service` 包
+- 生成一份带绝对路径的启动配置文件
+- 执行 `colcon build`
+
+脚本执行完后，会打印后续 `source` 和 `ros2 launch` 命令。
+
+如果需要自定义 workspace 或订阅话题，可以例如：
+
+```bash
+bash deploy_ros2_ws.sh \
+  --workspace ~/prj/ros2_ws \
+  --ros-distro humble \
+  --device cpu \
+  --image-topic /camera/image_raw \
+  --image-recognize-type 6
+```
+
+如果你需要手动编译，也可以按下面步骤执行。
 
 假设你已经有一个 ROS 2 workspace，例如：
 
