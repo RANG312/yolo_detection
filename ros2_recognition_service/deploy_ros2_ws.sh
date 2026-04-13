@@ -10,6 +10,7 @@ WORKSPACE_DIR="${WORKSPACE_DIR:-${HOME}/prj/ros2_ws}"
 PACKAGE_NAME="ros2_recognition_service"
 LINK_MODE="${LINK_MODE:-symlink}"
 DEVICE="${DEVICE:-0}"
+BUILD_PYTHON="${BUILD_PYTHON:-/usr/bin/python3}"
 IMAGE_TOPIC="${IMAGE_TOPIC:-}"
 IMAGE_RECOGNIZE_TYPE="${IMAGE_RECOGNIZE_TYPE:-1}"
 IMAGE_RECOGNIZE_SUBTYPE="${IMAGE_RECOGNIZE_SUBTYPE:-default}"
@@ -23,13 +24,14 @@ Options:
   --ros-distro NAME            ROS 2 distro name. Default: ${ROS_DISTRO_NAME}
   --link-mode MODE             'symlink' or 'copy'. Default: ${LINK_MODE}
   --device VALUE               Inference device, e.g. 0 or cpu. Default: ${DEVICE}
+  --build-python PATH          Python used only for ROS 2 package build. Default: ${BUILD_PYTHON}
   --image-topic TOPIC          Optional sensor_msgs/msg/Image topic to subscribe.
   --image-recognize-type TYPE  recognize_type for subscribed images. Default: ${IMAGE_RECOGNIZE_TYPE}
   --image-recognize-subtype S  recognize_subtype for subscribed images. Default: ${IMAGE_RECOGNIZE_SUBTYPE}
   -h, --help                   Show this help.
 
 Environment variables with the same names are also supported:
-  WORKSPACE_DIR, ROS_DISTRO_NAME, LINK_MODE, DEVICE,
+  WORKSPACE_DIR, ROS_DISTRO_NAME, LINK_MODE, DEVICE, BUILD_PYTHON,
   IMAGE_TOPIC, IMAGE_RECOGNIZE_TYPE, IMAGE_RECOGNIZE_SUBTYPE
 EOF
 }
@@ -50,6 +52,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --device)
       DEVICE="$2"
+      shift 2
+      ;;
+    --build-python)
+      BUILD_PYTHON="$2"
       shift 2
       ;;
     --image-topic)
@@ -78,6 +84,11 @@ done
 
 if [[ ! -f "/opt/ros/${ROS_DISTRO_NAME}/setup.bash" ]]; then
   echo "ROS 2 setup file not found: /opt/ros/${ROS_DISTRO_NAME}/setup.bash" >&2
+  exit 1
+fi
+
+if [[ ! -x "${BUILD_PYTHON}" ]]; then
+  echo "Build python not found or not executable: ${BUILD_PYTHON}" >&2
   exit 1
 fi
 
@@ -152,15 +163,20 @@ set +u
 source "/opt/ros/${ROS_DISTRO_NAME}/setup.bash"
 set -u
 
-echo "[2/3] Building workspace: ${WORKSPACE_DIR}"
+echo "[2/4] Cleaning old build cache for ${PACKAGE_NAME}"
 cd "${WORKSPACE_DIR}"
-colcon build --packages-select "${PACKAGE_NAME}"
+rm -rf "build/${PACKAGE_NAME}" "install/${PACKAGE_NAME}" log
 
-echo "[3/3] Deployment completed"
+echo "[3/4] Building workspace: ${WORKSPACE_DIR}"
+echo "      Using build python: ${BUILD_PYTHON}"
+colcon build --packages-select "${PACKAGE_NAME}" --cmake-args "-DPython3_EXECUTABLE=${BUILD_PYTHON}"
+
+echo "[4/4] Deployment completed"
 echo
 echo "Workspace: ${WORKSPACE_DIR}"
 echo "Package source: ${TARGET_PACKAGE_PATH}"
 echo "Launch config: ${WORKSPACE_CONFIG_FILE}"
+echo "Build python: ${BUILD_PYTHON}"
 echo
 echo "Next commands:"
 echo "  source /opt/ros/${ROS_DISTRO_NAME}/setup.bash"

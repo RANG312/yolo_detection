@@ -258,6 +258,8 @@ bash deploy_ros2_ws.sh
 - 创建 ROS 2 workspace
 - 挂载 `ros2_recognition_service` 包
 - 生成一份带绝对路径的启动配置文件
+- 清理旧的构建缓存
+- 强制使用系统 Python 编译 ROS 2 包，避免 conda 缓存污染
 - 执行 `colcon build`
 
 脚本执行完后，会打印后续 `source` 和 `ros2 launch` 命令。
@@ -268,10 +270,16 @@ bash deploy_ros2_ws.sh
 bash deploy_ros2_ws.sh \
   --workspace ~/prj/ros2_ws \
   --ros-distro humble \
+  --build-python /usr/bin/python3 \
   --device cpu \
   --image-topic /camera/image_raw \
   --image-recognize-type 6
 ```
+
+如果你在 Jetson 上同时使用 conda 环境做推理，建议遵循这个规则：
+
+- 编译 ROS 2 包时使用系统 Python，例如 `/usr/bin/python3`
+- 运行识别服务时再按需要激活 conda 环境
 
 如果你需要手动编译，也可以按下面步骤执行。
 
