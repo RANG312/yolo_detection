@@ -258,11 +258,18 @@ bash deploy_ros2_ws.sh
 - 创建 ROS 2 workspace
 - 挂载 `ros2_recognition_service` 包
 - 生成一份带绝对路径的启动配置文件
+- 生成工作区级环境脚本 `source_ros2_ws.bash`
+- 生成工作区级启动脚本 `launch_recognition_service.sh`
 - 清理旧的构建缓存
 - 强制使用系统 Python 编译 ROS 2 包，避免 conda 缓存污染
 - 执行 `colcon build`
 
 脚本执行完后，会打印后续 `source` 和 `ros2 launch` 命令。
+
+推荐直接使用脚本生成的两个文件：
+
+- `~/prj/ros2_ws/source_ros2_ws.bash`
+- `~/prj/ros2_ws/launch_recognition_service.sh`
 
 如果需要自定义 workspace 或订阅话题，可以例如：
 
@@ -305,6 +312,12 @@ source /opt/ros/<你的发行版>/setup.bash
 source ~/ros2_ws/install/setup.bash
 ```
 
+如果你使用自动部署脚本，更推荐直接：
+
+```bash
+source ~/ros2_ws/source_ros2_ws.bash
+```
+
 ## 8. 启动节点
 
 推荐使用 `launch` 启动。
@@ -335,6 +348,20 @@ ros2_recognition_service/config/recognition.yaml
 ros2 launch ros2_recognition_service recognition.launch.py
 ```
 
+但如果你是通过 `deploy_ros2_ws.sh` 部署出来的 workspace，更推荐直接使用工作区级启动脚本：
+
+```bash
+~/ros2_ws/launch_recognition_service.sh
+```
+
+这个脚本会自动：
+
+- `source /opt/ros/<发行版>/setup.bash`
+- `source ~/ros2_ws/install/setup.bash`
+- 带上 `config_file:=~/ros2_ws/config/recognition.yaml`
+
+这样可以避免误读到包安装目录里的默认配置文件。
+
 ### 8.2 指定配置文件启动
 
 如果你想准备多套配置，可以通过 `config_file:=...` 指定：
@@ -343,6 +370,12 @@ ros2 launch ros2_recognition_service recognition.launch.py
 ros2 launch ros2_recognition_service recognition.launch.py \
   config_file:=/你的路径/recognition.yaml
 ```
+
+注意：
+
+- 如果不显式传 `config_file:=...`，`launch` 会读取包安装目录里的默认 `config/recognition.yaml`
+- 自动部署脚本生成在 workspace 下的 `~/ros2_ws/config/recognition.yaml` 不会自动生效
+- 所以客户侧推荐直接使用 `~/ros2_ws/launch_recognition_service.sh`
 
 ### 8.3 命令行临时覆盖参数
 

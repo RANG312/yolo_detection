@@ -129,6 +129,8 @@ fi
 
 mkdir -p "${WORKSPACE_DIR}/config"
 WORKSPACE_CONFIG_FILE="${WORKSPACE_DIR}/config/recognition.yaml"
+WORKSPACE_SOURCE_SCRIPT="${WORKSPACE_DIR}/source_ros2_ws.bash"
+WORKSPACE_LAUNCH_SCRIPT="${WORKSPACE_DIR}/launch_recognition_service.sh"
 
 cat > "${WORKSPACE_CONFIG_FILE}" <<EOF
 repo_root: ${REPO_ROOT}
@@ -158,6 +160,23 @@ image_recognize_type: "${IMAGE_RECOGNIZE_TYPE}"
 image_recognize_subtype: "${IMAGE_RECOGNIZE_SUBTYPE}"
 EOF
 
+cat > "${WORKSPACE_SOURCE_SCRIPT}" <<EOF
+#!/usr/bin/env bash
+set -e
+source /opt/ros/${ROS_DISTRO_NAME}/setup.bash
+source ${WORKSPACE_DIR}/install/setup.bash
+EOF
+chmod +x "${WORKSPACE_SOURCE_SCRIPT}"
+
+cat > "${WORKSPACE_LAUNCH_SCRIPT}" <<EOF
+#!/usr/bin/env bash
+set -e
+source /opt/ros/${ROS_DISTRO_NAME}/setup.bash
+source ${WORKSPACE_DIR}/install/setup.bash
+exec ros2 launch ${PACKAGE_NAME} recognition.launch.py config_file:=${WORKSPACE_CONFIG_FILE} "\$@"
+EOF
+chmod +x "${WORKSPACE_LAUNCH_SCRIPT}"
+
 echo "[1/3] Sourcing ROS 2 environment: /opt/ros/${ROS_DISTRO_NAME}/setup.bash"
 set +u
 source "/opt/ros/${ROS_DISTRO_NAME}/setup.bash"
@@ -176,9 +195,15 @@ echo
 echo "Workspace: ${WORKSPACE_DIR}"
 echo "Package source: ${TARGET_PACKAGE_PATH}"
 echo "Launch config: ${WORKSPACE_CONFIG_FILE}"
+echo "Workspace source script: ${WORKSPACE_SOURCE_SCRIPT}"
+echo "Workspace launch script: ${WORKSPACE_LAUNCH_SCRIPT}"
 echo "Build python: ${BUILD_PYTHON}"
 echo
 echo "Next commands:"
+echo "  source ${WORKSPACE_SOURCE_SCRIPT}"
+echo "  ${WORKSPACE_LAUNCH_SCRIPT}"
+echo
+echo "Equivalent manual launch command:"
 echo "  source /opt/ros/${ROS_DISTRO_NAME}/setup.bash"
 echo "  source ${WORKSPACE_DIR}/install/setup.bash"
 echo "  ros2 launch ${PACKAGE_NAME} recognition.launch.py config_file:=${WORKSPACE_CONFIG_FILE}"
