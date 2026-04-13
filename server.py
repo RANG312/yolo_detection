@@ -442,7 +442,7 @@ class RecognitionService:
         返回结果中：
         - recognize_value 为归一化读数
         - confidence 当前固定为 100
-        - recognize_desc 中会附带 meter_index 和 arc_mode
+        - recognize_desc 中会附带 recognize_image_index 和 arc_mode
         """
         predict_args = build_meter_predict_args(self.config, visualize_path, DEFAULT_MIN_VALUE, DEFAULT_MAX_VALUE, debug_center)
         with self._predict_lock:
@@ -453,20 +453,20 @@ class RecognitionService:
 
         recognize_items: list[dict[str, str]] = []
         for meter_instance in prediction_instances:
-            meter_index = str(meter_instance["meter_index"])
+            recognize_image_index = str(meter_instance["recognize_image_index"])
             if meter_instance.get("error") is None:
                 normalized_reading = float(meter_instance["reading"])
                 arc_mode = str(meter_instance["arc_mode"])
                 for data_type in data_types:
-                    desc = f"识别成功，表计#{meter_index}归一化读数为{normalized_reading:.6f}，arc_mode={arc_mode}"
+                    desc = f"识别成功，表计#{recognize_image_index}归一化读数为{normalized_reading:.6f}，arc_mode={arc_mode}"
                     recognize_item = build_success_data_entry(data_type, normalized_reading, desc)
-                    recognize_item["meter_index"] = meter_index
+                    recognize_item["recognize_image_index"] = recognize_image_index
                     recognize_items.append(recognize_item)
             else:
                 error_text = str(meter_instance["error"])
                 for data_type in data_types:
                     recognize_item = build_error_data_entry(data_type, error_text)
-                    recognize_item["meter_index"] = meter_index
+                    recognize_item["recognize_image_index"] = recognize_image_index
                     recognize_items.append(recognize_item)
         return recognize_items
 
@@ -489,7 +489,7 @@ class RecognitionService:
         对检测类任务来说：
         - recognize_value 为类别名
         - confidence 为模型置信度百分比
-        - meter_index 表示第几个检测框
+        - recognize_image_index 表示第几个检测框
         """
         image = cv2.imread(str(local_image_path))
         if image is None:
@@ -507,7 +507,7 @@ class RecognitionService:
         if boxes is None or len(boxes) == 0:
             for data_type in data_types:
                 recognize_item = build_error_data_entry(data_type, f"{task_desc}未检测到目标")
-                recognize_item["meter_index"] = "0"
+                recognize_item["recognize_image_index"] = "0"
                 recognize_items.append(recognize_item)
             return recognize_items
 
@@ -519,7 +519,7 @@ class RecognitionService:
             for data_type in data_types:
                 recognize_items.append(
                     {
-                        "meter_index": str(detect_index),
+                        "recognize_image_index": str(detect_index),
                         "recognize_type": data_type["recognize_type"],
                         "recognize_subtype": data_type["recognize_subtype"],
                         "recognize_value": label,

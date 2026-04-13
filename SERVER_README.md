@@ -208,7 +208,7 @@ results/http_service/outputs/<req_id>/
 
 如果没有检测到目标，则返回一条失败记录：
 
-- `meter_index = "0"`
+- `recognize_image_index = "0"`
 - `recognize_value = ""`
 - `confidence = "0"`
 
@@ -311,7 +311,7 @@ results/http_service/outputs/<req_id>/
       "image_path_result": "results/http_service/outputs/<req_id>/a_result_fire.jpg",
       "recognize_data": [
         {
-          "meter_index": "1",
+          "recognize_image_index": "1",
           "recognize_type": "6",
           "recognize_subtype": "",
           "recognize_value": "fire",
@@ -332,7 +332,7 @@ results/http_service/outputs/<req_id>/
 
 每一项都包含以下字段：
 
-- `meter_index`
+- `recognize_image_index`
 - `recognize_type`
 - `recognize_subtype`
 - `recognize_value`
@@ -341,7 +341,7 @@ results/http_service/outputs/<req_id>/
 
 字段解释：
 
-- `meter_index`
+- `recognize_image_index`
   - 表计场景：对应第几个表计实例
   - 检测场景：对应第几个检测框
   - 未检出目标时固定为 `"0"`
@@ -535,7 +535,7 @@ type[:subtype]
 
 每个 `recognize_data` 项必须有：
 
-- `meter_index`
+- `recognize_image_index`
 - `recognize_type`
 - `recognize_subtype`
 - `recognize_value`
@@ -558,7 +558,7 @@ results/http_service/test_callback_payload.json
 
 摘要中会显示：
 
-- `meter_index`
+- `recognize_image_index`
 - `type`
 - `subtype`
 - `value`

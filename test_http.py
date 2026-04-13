@@ -244,7 +244,7 @@ def validate_callback_payload(payload: dict[str, Any]) -> None:
             raise ValueError("recognize_data must be a list.")
         for recognize_item in image_result["recognize_data"]:
             for field_name in (
-                "meter_index",
+                "recognize_image_index",
                 "recognize_type",
                 "recognize_subtype",
                 "recognize_value",
@@ -269,14 +269,14 @@ def print_callback_summary(payload: dict[str, Any]) -> None:
         image_path = image_result["image_path"]
         print(f"- image: {image_path}")
         for recognize_item in image_result["recognize_data"]:
-            meter_index = recognize_item["meter_index"]
+            recognize_image_index = recognize_item["recognize_image_index"]
             recognize_type = recognize_item["recognize_type"]
             subtype = recognize_item["recognize_subtype"]
             value = recognize_item["recognize_value"]
             confidence = recognize_item["confidence"]
             desc = recognize_item["recognize_desc"]
             print(
-                f"  meter_index={meter_index} type={recognize_type} subtype={subtype} "
+                f"  recognize_image_index={recognize_image_index} type={recognize_type} subtype={subtype} "
                 f"value={value} confidence={confidence} desc={desc}"
             )
 

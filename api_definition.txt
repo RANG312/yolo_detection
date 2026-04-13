@@ -90,7 +90,7 @@ c) 上报识别结果接口 (回调接口)
                     "image_path_result": "/root/xxx/result/a.jpg",  -- 识别结果图
                     "recognize_data": [
                         {
-                            "meter_index": "1",
+                            "recognize_image_index": "1",
                             "recognize_type": "1",
                             "recognize_subtype": "3",
                             "recognize_value": "0.523456",
@@ -104,7 +104,7 @@ c) 上报识别结果接口 (回调接口)
                     "image_path_result": "/root/xxx/result/b.jpg",
                     "recognize_data": [
                         {
-                            "meter_index": "1",
+                            "recognize_image_index": "1",
                             "recognize_type": "6",
                             "recognize_subtype": "",
                             "recognize_value": "fire",
@@ -125,7 +125,7 @@ c) 上报识别结果接口 (回调接口)
         - recognize_data: 当前图片的识别结果列表
 
         recognize_data 字段说明:
-        - meter_index:
+        - recognize_image_index:
           表计场景表示第几个表计实例
           检测场景表示第几个检测框
           未检出目标时固定为 "0"

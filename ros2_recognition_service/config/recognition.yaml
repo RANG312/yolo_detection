@@ -1,0 +1,26 @@
+repo_root: /data/prj/yolov8_dial_reading/ultralytics
+node_name: recognition_service_node
+
+model: /data/prj/yolov8_dial_reading/ultralytics/runs/train/meter_data_9k_yolov8m_best/weights/best.pt
+fire_model: /data/prj/yolov8_dial_reading/ultralytics/runs/train/best_fire.pt
+safehat_model: /data/prj/yolov8_dial_reading/ultralytics/runs/train/best_person.pt
+
+imgsz: 640
+conf: 0.25
+device: "0"
+min_value: 0.0
+max_value: 1.0
+
+result_root: /data/prj/yolov8_dial_reading/ultralytics/results/http_service
+callback_port: 18080
+request_timeout: 15
+
+callback_topic: /api/v1/recognition/callback
+submit_service: /api/v1/recognition/tasks/submit
+status_service: /api/v1/recognition/tasks/get
+
+# 留空表示不订阅图像话题，只提供 service。
+image_topic: ""
+image_qos_depth: 10
+image_recognize_type: "1"
+image_recognize_subtype: default

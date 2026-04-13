@@ -735,10 +735,10 @@ def assign_meter_data_9k_instances(
     instances: list[dict[str, dict[str, np.ndarray | float]]] = []
     used_detection_ids: dict[str, set[int]] = {name: set() for name in point_classes}
 
-    for meter_index, gauge_box in enumerate(sorted_gauges, start=1):
+    for recognize_image_index, gauge_box in enumerate(sorted_gauges, start=1):
         gauge_key = tuple(np.asarray(gauge_box, dtype=np.float64).tolist())
         gauge_detection = dict(gauge_lookup[gauge_key])
-        gauge_detection["meter_index"] = meter_index
+        gauge_detection["recognize_image_index"] = recognize_image_index
         gauge_center = box_center(gauge_box)
         gauge_size = max(float(gauge_box[2] - gauge_box[0]), float(gauge_box[3] - gauge_box[1]))
         assign_margin = max(6.0, gauge_size * 0.08)
@@ -764,7 +764,7 @@ def assign_meter_data_9k_instances(
             if best_score[0] > 0.0:
                 continue
             selected_item = dict(best_item)
-            selected_item["meter_index"] = meter_index
+            selected_item["recognize_image_index"] = recognize_image_index
             instance[class_name] = selected_item
             used_detection_ids[class_name].add(best_id)
 
@@ -899,13 +899,13 @@ def predict_image_instances(
             geometry = compute_reading_from_detection_instance(image, detection_instance, annotation_mode, args.debug_center)
             reading = args.min_value + geometry["ratio"] * (args.max_value - args.min_value)
             geometry["reading"] = reading
-            geometry["meter_index"] = int(detection_instance.get("gauge", {}).get("meter_index", index))
+            geometry["recognize_image_index"] = int(detection_instance.get("gauge", {}).get("recognize_image_index", index))
             geometry["error"] = None
             prediction_instances.append(geometry)
         except Exception as exc:
             prediction_instances.append(
                 {
-                    "meter_index": int(detection_instance.get("gauge", {}).get("meter_index", index)),
+                    "recognize_image_index": int(detection_instance.get("gauge", {}).get("recognize_image_index", index)),
                     "error": str(exc),
                     "gauge_box": detection_instance.get("gauge", {}).get("box"),
                     "center_debug": {},
@@ -915,17 +915,17 @@ def predict_image_instances(
 
     canvas = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     for instance in prediction_instances:
-        meter_index = instance["meter_index"]
+        recognize_image_index = instance["recognize_image_index"]
         if instance.get("error") is not None:
             if isinstance(instance.get("gauge_box"), np.ndarray):
-                draw_box(canvas, instance["gauge_box"], f"gauge_{meter_index}_error", (0, 165, 255))
+                draw_box(canvas, instance["gauge_box"], f"gauge_{recognize_image_index}_error", (0, 165, 255))
             continue
         if annotation_mode == "meter_data_9k":
-            draw_box(canvas, instance["gauge_box"], f"gauge_{meter_index}", (0, 255, 255))
-            draw_box(canvas, instance["min_tick_box"], f"min_tick_{meter_index}", (0, 0, 255))
-            draw_box(canvas, instance["max_tick_box"], f"max_tick_{meter_index}", (255, 215, 0))
-            draw_box(canvas, instance["center_box"], f"center_{meter_index}", (255, 0, 255))
-            draw_box(canvas, instance["pointer_tip_box"], f"pointer_tip_{meter_index}", (0, 255, 0))
+            draw_box(canvas, instance["gauge_box"], f"gauge_{recognize_image_index}", (0, 255, 255))
+            draw_box(canvas, instance["min_tick_box"], f"min_tick_{recognize_image_index}", (0, 0, 255))
+            draw_box(canvas, instance["max_tick_box"], f"max_tick_{recognize_image_index}", (255, 215, 0))
+            draw_box(canvas, instance["center_box"], f"center_{recognize_image_index}", (255, 0, 255))
+            draw_box(canvas, instance["pointer_tip_box"], f"pointer_tip_{recognize_image_index}", (0, 255, 0))
         else:
             draw_box(canvas, detection_instances[0]["start"]["box"], "start", (0, 0, 255))
             draw_box(canvas, detection_instances[0]["end"]["box"], "end", (255, 215, 0))
@@ -952,9 +952,9 @@ def predict_image_instances(
     for row_index, instance in enumerate(prediction_instances, start=1):
         y = 20 + row_index * 24
         if instance.get("error") is not None:
-            text = f"#{instance['meter_index']}: error"
+            text = f"#{instance['recognize_image_index']}: error"
         else:
-            text = f"#{instance['meter_index']}: {instance['reading']:.3f} ({instance['arc_mode']})"
+            text = f"#{instance['recognize_image_index']}: {instance['reading']:.3f} ({instance['arc_mode']})"
         cv2.putText(canvas, text, (20, y), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (220, 30, 30), 2, cv2.LINE_AA)
 
         if args.debug_center and instance.get("error") is None:
@@ -970,7 +970,7 @@ def predict_image_instances(
             for key, color in debug_points:
                 point = instance["center_debug"].get(key)
                 if isinstance(point, np.ndarray):
-                    draw_point(canvas, point, f"{key}_{instance['meter_index']}", color)
+                    draw_point(canvas, point, f"{key}_{instance['recognize_image_index']}", color)
             if isinstance(instance["center_debug"].get("pre_hub_center"), np.ndarray):
                 cv2.line(
                     canvas,
