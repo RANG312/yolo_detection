@@ -195,6 +195,8 @@ echo
 echo "Workspace: ${WORKSPACE_DIR}"
 echo "Package source: ${TARGET_PACKAGE_PATH}"
 echo "Launch config: ${WORKSPACE_CONFIG_FILE}"
+echo "Repo source script: ${PACKAGE_DIR}/source_ros2_ws.bash"
+echo "Repo launch script: ${PACKAGE_DIR}/launch_recognition_service.sh"
 echo "Workspace source script: ${WORKSPACE_SOURCE_SCRIPT}"
 echo "Workspace launch script: ${WORKSPACE_LAUNCH_SCRIPT}"
 echo "Build python: ${BUILD_PYTHON}"

@@ -40,6 +40,8 @@ ros2_recognition_service/
 - `node.py` 是 ROS 2 节点入口
 - `config/recognition.yaml` 是推荐修改的启动配置文件
 - `deploy_ros2_ws.sh` 可从当前 `ultralytics` 源码目录自动创建并编译 ROS 2 workspace
+- `source_ros2_ws.bash` 是仓库内的环境加载脚本
+- `launch_recognition_service.sh` 是仓库内的启动脚本
 - `launch/recognition.launch.py` 是推荐使用的启动入口
 - `SubmitRecognitionTask.srv` 用于提交任务
 - `GetRecognitionTask.srv` 用于按 `req_id` 查询任务状态
@@ -270,6 +272,11 @@ bash deploy_ros2_ws.sh
 
 - `~/prj/ros2_ws/source_ros2_ws.bash`
 - `~/prj/ros2_ws/launch_recognition_service.sh`
+
+仓库中也保留了同名脚本，方便一起提交到 GitLab：
+
+- `ros2_recognition_service/source_ros2_ws.bash`
+- `ros2_recognition_service/launch_recognition_service.sh`
 
 如果需要自定义 workspace 或订阅话题，可以例如：
 
