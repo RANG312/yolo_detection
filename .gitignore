@@ -207,6 +207,7 @@ results.csv
 # running resutls
 results/
 results/dial_reading_batch_*
+TODO.md
 
 # local datasets
 data/
