@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import threading
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -18,6 +19,7 @@ import requests
 from ultralytics import YOLO
 
 from dial_reading import load_model, predict_image_instances, save_canvas
+from log_manager import GlobalLogManager
 
 # 默认参数配置
 DEFAULT_METER_MODEL_PATH = "runs/train/meter_data_9k_yolov8m_best/weights/best.pt"    # 指针表计读数权重路径
@@ -34,6 +36,7 @@ DEFAULT_CALLBACK_PORT = 8088   # CALLBACK 端口
 DEFAULT_CALLBACK_PATH = "/api/v1/recognition/callback"  # CALLBACK地址
 DEFAULT_RESULT_ROOT = Path("results/http_service")   # 结果保存路径
 DEFAULT_REQUEST_TIMEOUT = 15    # 设置允许timeout时长
+DEFAULT_LOG_DIR_NAME = "logs"
 
 RECOGNIZE_TYPE_METER = "1"      # 表计读数任务"recognize_type"键值
 RECOGNIZE_TYPE_FIRE = "6"       # 火源检测任务"recognize_type"键值
@@ -243,14 +246,23 @@ class RecognitionService:
         self.config = config
         self.result_root = config.result_root
         self.result_root.mkdir(parents=True, exist_ok=True)
+        self.logger = GlobalLogManager.get_logger("recognition.service")
         self.input_root = self.result_root / "inputs"
         self.output_root = self.result_root / "outputs"
         self.input_root.mkdir(parents=True, exist_ok=True)
         self.output_root.mkdir(parents=True, exist_ok=True)
 
+        self.logger.info("loading models")
         self.meter_model, self.config.annotation_mode = load_model(config.model)
         self.fire_model = YOLO(config.fire_model)
         self.safehat_model = YOLO(config.safehat_model)
+        self.logger.info(
+            "models loaded: meter=%s fire=%s safehat=%s annotation_mode=%s",
+            config.model,
+            config.fire_model,
+            config.safehat_model,
+            self.config.annotation_mode,
+        )
         self._tasks: dict[str, TaskState] = {}
         self._tasks_lock = threading.Lock()
         self._predict_lock = threading.Lock()
@@ -280,11 +292,18 @@ class RecognitionService:
         parse_extra_info(payload.get("extra_info", ""))
 
         with self._tasks_lock:
-            if req_id in self._tasks:
-                raise ValueError(f"req_id already exists: {req_id}")
+            # Temporary for local/Postman testing: allow reusing the same req_id.
+            # if req_id in self._tasks:
+            #     raise ValueError(f"req_id already exists: {req_id}")
             task = TaskState(req_id=req_id, callback_host=callback_host, status="processing", request_payload=payload)
             self._tasks[req_id] = task
 
+        self.logger.info(
+            "task created: req_id=%s callback_host=%s image_count=%s",
+            req_id,
+            callback_host,
+            len(image_paths),
+        )
         worker = threading.Thread(target=self._process_task, args=(req_id,), daemon=True)
         worker.start()
         return task
@@ -301,6 +320,8 @@ class RecognitionService:
             for key, value in updates.items():
                 setattr(task, key, value)
             task.updated_at = now_text()
+            update_keys = ",".join(sorted(updates))
+            self.logger.debug("task updated: req_id=%s fields=%s", req_id, update_keys)
 
     def _process_task(self, req_id: str) -> None:
         """
@@ -327,6 +348,13 @@ class RecognitionService:
         debug_center = bool(extra_info.get("debug_center", False))
 
         try:
+            self.logger.info(
+                "task processing started: req_id=%s image_count=%s callback_url=%s debug_center=%s",
+                req_id,
+                len(image_paths),
+                callback_url,
+                debug_center,
+            )
             data_result = []
             for index, (image_path, data_type) in enumerate(zip(image_paths, image_data_types), start=1):
                 data_result.append(self._process_single_image(req_id, index, image_path, data_type, extra_info, debug_center))
@@ -339,6 +367,7 @@ class RecognitionService:
                 "finish_time": now_text(),
             }
             self._update_task(req_id, status="finished", callback_payload=callback_payload, error=None)
+            self.logger.info("task processing finished: req_id=%s result_count=%s", req_id, len(data_result))
             self._send_callback(req_id, callback_url, callback_payload)
         except Exception as exc:
             callback_payload = {
@@ -349,6 +378,7 @@ class RecognitionService:
                 "finish_time": now_text(),
             }
             self._update_task(req_id, status="finished", callback_payload=callback_payload, error=str(exc))
+            self.logger.exception("task processing failed: req_id=%s", req_id)
             self._send_callback(req_id, callback_url, callback_payload)
 
     def _process_single_image(
@@ -381,6 +411,13 @@ class RecognitionService:
         recognize_items: list[dict[str, str]] = []
         image_result_path: Path | None = None
         task_kind = resolve_task_kind(data_type["recognize_type"])
+        self.logger.info(
+            "image processing started: req_id=%s index=%s task_kind=%s source=%s",
+            req_id,
+            index,
+            task_kind,
+            image_path,
+        )
 
         if task_kind == TASK_KIND_METER:
             meter_visualize_path = image_output_dir / f"{local_image_path.stem}_result_meter.jpg"
@@ -420,6 +457,14 @@ class RecognitionService:
             )
             image_result_path = safehat_visualize_path
 
+        self.logger.info(
+            "image processing finished: req_id=%s index=%s task_kind=%s result_path=%s items=%s",
+            req_id,
+            index,
+            task_kind,
+            image_result_path or local_image_path,
+            len(recognize_items),
+        )
         return {
             "image_path": image_path,
             "image_path_result": str(image_result_path or local_image_path),
@@ -445,6 +490,7 @@ class RecognitionService:
         - recognize_desc 中会附带 recognize_image_index 和 arc_mode
         """
         predict_args = build_meter_predict_args(self.config, visualize_path, DEFAULT_MIN_VALUE, DEFAULT_MAX_VALUE, debug_center)
+        self.logger.info("meter recognition running: image=%s output=%s", local_image_path, visualize_path)
         with self._predict_lock:
             canvas, prediction_instances, _, _ = predict_image_instances(
                 local_image_path, self.meter_model, predict_args, self.config.annotation_mode
@@ -468,6 +514,12 @@ class RecognitionService:
                     recognize_item = build_error_data_entry(data_type, error_text)
                     recognize_item["recognize_image_index"] = recognize_image_index
                     recognize_items.append(recognize_item)
+        self.logger.info(
+            "meter recognition finished: image=%s meters=%s output=%s",
+            local_image_path,
+            len(recognize_items),
+            visualize_path,
+        )
         return recognize_items
 
     def _run_detection_recognition(
@@ -495,6 +547,7 @@ class RecognitionService:
         if image is None:
             raise FileNotFoundError(f"Cannot read image: {local_image_path}")
 
+        self.logger.info("detection recognition running: task=%s image=%s output=%s", task_desc, local_image_path, visualize_path)
         with self._predict_lock:
             results = model.predict(source=image, imgsz=self.config.imgsz, conf=self.config.conf, device=self.config.device, verbose=False)
         result = results[0]
@@ -509,6 +562,7 @@ class RecognitionService:
                 recognize_item = build_error_data_entry(data_type, f"{task_desc}未检测到目标")
                 recognize_item["recognize_image_index"] = "0"
                 recognize_items.append(recognize_item)
+            self.logger.warning("detection recognition found no targets: task=%s image=%s", task_desc, local_image_path)
             return recognize_items
 
         names = result.names if isinstance(result.names, dict) else {i: name for i, name in enumerate(result.names)}
@@ -528,6 +582,13 @@ class RecognitionService:
                     }
                 )
 
+        self.logger.info(
+            "detection recognition finished: task=%s image=%s detections=%s output=%s",
+            task_desc,
+            local_image_path,
+            len(boxes),
+            visualize_path,
+        )
         return recognize_items
 
     def _prepare_image(self, req_id: str, index: int, image_path: str) -> Path:
@@ -546,9 +607,11 @@ class RecognitionService:
         if is_http_url(image_path):
             filename = make_filename_from_url(image_path, f"image_{index}.jpg")
             target_path = task_input_dir / filename
+            self.logger.info("downloading image: req_id=%s index=%s url=%s target=%s", req_id, index, image_path, target_path)
             response = requests.get(image_path, timeout=self.config.request_timeout)
             response.raise_for_status()
             target_path.write_bytes(response.content)
+            self.logger.info("image downloaded: req_id=%s index=%s target=%s bytes=%s", req_id, index, target_path, len(response.content))
             return target_path
 
         local_path = Path(image_path).expanduser()
@@ -556,6 +619,7 @@ class RecognitionService:
             local_path = Path.cwd() / local_path
         if not local_path.exists():
             raise FileNotFoundError(f"Image does not exist: {local_path}")
+        self.logger.info("using local image: req_id=%s index=%s path=%s", req_id, index, local_path)
         return local_path
 
     def _send_callback(self, req_id: str, callback_url: str, callback_payload: dict[str, Any]) -> None:
@@ -566,10 +630,13 @@ class RecognitionService:
         状态中，便于后续通过查询接口定位问题。
         """
         try:
+            self.logger.info("sending callback: req_id=%s url=%s", req_id, callback_url)
             response = requests.post(callback_url, json=callback_payload, timeout=self.config.request_timeout)
             self._update_task(req_id, callback_status_code=response.status_code, callback_error=None)
+            self.logger.info("callback sent: req_id=%s url=%s status_code=%s", req_id, callback_url, response.status_code)
         except Exception as exc:
             self._update_task(req_id, callback_error=str(exc))
+            self.logger.exception("callback failed: req_id=%s url=%s", req_id, callback_url)
 
 def make_error_payload(req_id: str | None, message: str, status: str = "finished") -> dict[str, Any]:
     # 构造统一错误响应体
@@ -584,6 +651,10 @@ def make_error_payload(req_id: str | None, message: str, status: str = "finished
 class RecognitionHandler(BaseHTTPRequestHandler):
     server: "RecognitionAPIServer"
 
+    @property
+    def logger(self) -> logging.Logger:
+        return GlobalLogManager.get_logger("recognition.http")
+
     def do_GET(self) -> None:  # noqa: N802
         """
         处理 GET 请求。
@@ -593,6 +664,7 @@ class RecognitionHandler(BaseHTTPRequestHandler):
         - /api/v1/recognition/tasks/{req_id}：查询任务状态
         """
         if self.path == "/health":
+            self.logger.debug("health check requested: client=%s", self.client_address[0])
             self._send_json(
                 HTTPStatus.OK,
                 {"code": 0, "resp_msg": "ok", "data": {"status": "healthy", "time": now_text()}},
@@ -601,6 +673,7 @@ class RecognitionHandler(BaseHTTPRequestHandler):
 
         if self.path.startswith("/api/v1/recognition/tasks/"):
             req_id = self.path.rsplit("/", 1)[-1]
+            self.logger.info("task query requested: req_id=%s client=%s", req_id, self.client_address[0])
             task = self.server.service.get_task(req_id)
             if task is None:
                 self._send_json(HTTPStatus.NOT_FOUND, make_error_payload(req_id, "Task not found."))
@@ -640,15 +713,23 @@ class RecognitionHandler(BaseHTTPRequestHandler):
         try:
             payload = self._read_json_body()
             callback_host = self._get_callback_host()
+            self.logger.info(
+                "task submit requested: client=%s callback_host=%s req_id=%s",
+                self.client_address[0],
+                callback_host,
+                payload.get("req_id"),
+            )
             task = self.server.service.create_task(payload, callback_host)
         except ValueError as exc:
             req_id = None
             if isinstance(exc.args[0], str) and "req_id" in str(exc):
                 req_id = str(payload.get("req_id")) if isinstance(payload, dict) else None
+            self.logger.warning("bad request: path=%s req_id=%s error=%s", self.path, req_id, exc)
             self._send_json(HTTPStatus.BAD_REQUEST, make_error_payload(req_id, str(exc)))
             return
         except Exception as exc:
             req_id = payload.get("req_id") if isinstance(payload, dict) else None
+            self.logger.exception("request handling failed: path=%s req_id=%s", self.path, req_id)
             self._send_json(HTTPStatus.INTERNAL_SERVER_ERROR, make_error_payload(req_id, str(exc)))
             return
 
@@ -658,6 +739,7 @@ class RecognitionHandler(BaseHTTPRequestHandler):
             "resp_msg": "Task accepted successfully.",
             "data": {"task_status": task.status},
         }
+        self.logger.info("task accepted: req_id=%s", task.req_id)
         self._send_json(HTTPStatus.OK, response)
 
     def _get_callback_host(self) -> str:
@@ -672,9 +754,8 @@ class RecognitionHandler(BaseHTTPRequestHandler):
 
     def log_message(self, format: str, *args: Any) -> None:
         # 自定义 HTTP 访问日志格式
-        timestamp = now_text()
         message = format % args
-        print(f"[{timestamp}] {self.address_string()} {message}")
+        self.logger.info("access: client=%s message=%s", self.address_string(), message)
 
     def _read_json_body(self) -> dict[str, Any]:
         # 读取并校验 JSON 请求体
@@ -722,19 +803,24 @@ def main() -> None:
     """
     args = parse_args()
     args.result_root = args.result_root.resolve()
+    log_dir = args.result_root / DEFAULT_LOG_DIR_NAME
+    GlobalLogManager.configure(log_dir)
+    logger = GlobalLogManager.get_logger("recognition.main")
     service = RecognitionService(args)
     server = RecognitionAPIServer((args.host, args.port), RecognitionHandler, service)
-    print(f"[{now_text()}] meter model loaded: {args.model}")
-    print(f"[{now_text()}] fire model loaded: {args.fire_model}")
-    print(f"[{now_text()}] safehat model loaded: {args.safehat_model}")
-    print(f"[{now_text()}] meter annotation mode: {args.annotation_mode}")
-    print(f"[{now_text()}] listening on http://{args.host}:{args.port}")
+    logger.info("log file: %s", GlobalLogManager.get_log_file_path())
+    logger.info("meter model loaded: %s", args.model)
+    logger.info("fire model loaded: %s", args.fire_model)
+    logger.info("safehat model loaded: %s", args.safehat_model)
+    logger.info("meter annotation mode: %s", args.annotation_mode)
+    logger.info("listening on http://%s:%s", args.host, args.port)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        pass
+        logger.info("server interrupted by keyboard")
     finally:
         server.server_close()
+        logger.info("server closed")
 
 
 if __name__ == "__main__":

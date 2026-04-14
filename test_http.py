@@ -17,7 +17,7 @@ import requests
 DEFAULT_SERVER = "http://127.0.0.1:3208"
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_CALLBACK_HOST = "0.0.0.0"
-DEFAULT_CALLBACK_PORT = 18080
+DEFAULT_CALLBACK_PORT = 8088
 DEFAULT_CALLBACK_PATH = "/api/v1/recognition/callback"
 DEFAULT_TIMEOUT = 120
 DEFAULT_OUTPUT = Path("results/http_service/test_callback_payload.json")
