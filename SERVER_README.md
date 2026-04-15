@@ -436,11 +436,23 @@ python3 test_http.py \
   --data-type 6
 ```
 
+也支持把类型和 subtype 拆开传：
+
+```bash
+python3 test_http.py \
+  --server http://127.0.0.1:3208 \
+  --images /data/test/a.jpg \
+  --recognize-type 1 \
+  --recognize-subtype 25
+```
+
 ### 15.2 常用参数
 
 - `--server`：识别服务地址，默认 `http://127.0.0.1:3208`
 - `--images`：一个或多个图片路径
 - `--data-type`：格式为 `type[:subtype]`
+- `--recognize-type`：显式传识别类型，可重复传入
+- `--recognize-subtype`：显式传 subtype，可传一个共享值，也可按类型数量逐项传入
 - `--scene`：测试预设场景
 - `--callback-host`
 - `--callback-port`
@@ -449,7 +461,11 @@ python3 test_http.py \
 - `--timeout`
 - `--output`
 
-### 15.3 data-type 示例
+### 15.3 参数传法说明
+
+`test_http.py` 当前支持两种传法：
+
+第一种：紧凑写法，使用 `--data-type type[:subtype]`
 
 - `--data-type 1:3`
 - `--data-type 1:25`
@@ -460,7 +476,20 @@ python3 test_http.py \
 - `--data-type fire`
 - `--data-type safehat`
 
-说明：
+第二种：拆分写法，显式使用 `--recognize-type` 和 `--recognize-subtype`
+
+- `--recognize-type 1 --recognize-subtype 25`
+- `--recognize-type 1 --recognize-subtype digital`
+- `--recognize-type 6`
+- `--recognize-type fire`
+- `--recognize-type 1 --recognize-type 6 --recognize-subtype 25 --recognize-subtype ""`
+
+规则说明：
+
+- `--data-type` 和 `--recognize-type/--recognize-subtype` 不能混用
+- `--recognize-subtype` 可以不传
+- `--recognize-subtype` 只传 1 次时，会复用到所有 `--recognize-type`
+- `--recognize-subtype` 也可以按 `--recognize-type` 数量一一对应传入
 
 - 表计不写 subtype 时，测试脚本会自动补成 `default`
 - 如果测数码表，建议显式写成 `1:digital`
@@ -478,7 +507,7 @@ python3 test_http.py \
 注意：
 
 - 当前 `meter` 预设里仍然使用了示例量程值
-- 如果你要验证当前指针表逻辑，建议显式传 `--data-type 1:<量程>`
+- 如果你要验证当前指针表逻辑，建议显式传 `--data-type 1:<量程>`，或 `--recognize-type 1 --recognize-subtype <量程>`
 
 ## 16. 当前已知限制
 
@@ -524,6 +553,16 @@ python3 test_http.py \
   --data-type 1:25
 ```
 
+或：
+
+```bash
+python3 test_http.py \
+  --server http://127.0.0.1:3208 \
+  --images /data/test/meter.jpg \
+  --recognize-type 1 \
+  --recognize-subtype 25
+```
+
 数码表骨架联调：
 
 ```bash
@@ -531,4 +570,14 @@ python3 test_http.py \
   --server http://127.0.0.1:3208 \
   --images /data/test/digital.jpg \
   --data-type 1:digital
+```
+
+或：
+
+```bash
+python3 test_http.py \
+  --server http://127.0.0.1:3208 \
+  --images /data/test/digital.jpg \
+  --recognize-type 1 \
+  --recognize-subtype digital
 ```

@@ -121,6 +121,18 @@ def parse_args() -> argparse.Namespace:
         help="Recognition item in type[:subtype] format, e.g. 1:3, 6, 7. Can be repeated.",
     )
     parser.add_argument(
+        "--recognize-type",
+        action="append",
+        default=[],
+        help="Explicit recognize_type value. Can be repeated. Use with --recognize-subtype.",
+    )
+    parser.add_argument(
+        "--recognize-subtype",
+        action="append",
+        default=[],
+        help="Explicit recognize_subtype value. Can be repeated. Supports one shared value or one value per recognize_type.",
+    )
+    parser.add_argument(
         "--scene",
         choices=[SCENE_METER, SCENE_FIRE, SCENE_SAFEHAT],
         default=SCENE_METER,
@@ -158,7 +170,39 @@ def normalize_recognize_type(recognize_type: str) -> str:
     return normalized
 
 
-def parse_data_types(raw_items: list[str], scene: str) -> list[dict[str, str]]:
+def build_data_types_from_explicit_fields(raw_types: list[str], raw_subtypes: list[str]) -> list[dict[str, str]]:
+    if not raw_types and not raw_subtypes:
+        return []
+    if not raw_types:
+        raise ValueError("--recognize-subtype requires --recognize-type.")
+
+    normalized_types = [normalize_recognize_type(item) for item in raw_types]
+    if not raw_subtypes:
+        resolved_subtypes = [""] * len(normalized_types)
+    elif len(raw_subtypes) == 1:
+        resolved_subtypes = [raw_subtypes[0]] * len(normalized_types)
+    elif len(raw_subtypes) == len(normalized_types):
+        resolved_subtypes = raw_subtypes
+    else:
+        raise ValueError("Provide either one shared --recognize-subtype or one --recognize-subtype per --recognize-type.")
+
+    data_types = []
+    for recognize_type, recognize_subtype_raw in zip(normalized_types, resolved_subtypes):
+        recognize_subtype = "" if recognize_subtype_raw is None else str(recognize_subtype_raw).strip()
+        if recognize_type == "1" and not recognize_subtype:
+            recognize_subtype = "default"
+        data_types.append({"recognize_type": recognize_type, "recognize_subtype": recognize_subtype})
+    return data_types
+
+
+def parse_data_types(raw_items: list[str], raw_types: list[str], raw_subtypes: list[str], scene: str) -> list[dict[str, str]]:
+    if raw_items and (raw_types or raw_subtypes):
+        raise ValueError("Use either --data-type or --recognize-type/--recognize-subtype, not both.")
+
+    explicit_data_types = build_data_types_from_explicit_fields(raw_types, raw_subtypes)
+    if explicit_data_types:
+        return explicit_data_types
+
     if not raw_items:
         return [item.copy() for item in SCENE_DEFAULT_DATA_TYPES[scene]]
 
@@ -185,9 +229,12 @@ def build_request_payload(args: argparse.Namespace, callback_url: str) -> dict[s
     extra_info: dict[str, Any] = {"callback_url": callback_url}
     if args.debug_center:
         extra_info["debug_center"] = True
-    data_types = parse_data_types(args.data_type, args.scene)
+    data_types = parse_data_types(args.data_type, args.recognize_type, args.recognize_subtype, args.scene)
     if len(data_types) not in {1, len(args.images)}:
-        raise ValueError("One image uses one data_type. Provide either one shared --data-type or one --data-type per image.")
+        raise ValueError(
+            "One image uses one data_type. Provide either one shared item or one item per image for "
+            "--data-type or --recognize-type/--recognize-subtype."
+        )
 
     return {
         "req_id": str(uuid4()),
