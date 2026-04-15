@@ -76,20 +76,20 @@ def resolve_task_kind(recognize_type: str) -> str:
     return task_kind
 
 
-def resolve_meter_subtype(recognize_subtype: str, default_scale: float) -> MeterSubtypeResolution:
+def resolve_meter_subtype(recognize_subtype: str) -> MeterSubtypeResolution:
     """
     解析表计子类型，判断应走数码表链路还是指针表量程链路。
 
     规则如下：
     - 命中保留的 OCR subtype：走数码表路径
-    - 为空或为 default：走指针表默认量程
-    - 其他值：按浮点量程解析
+    - 其他有效值：按浮点量程解析
+    - 空字符串或 default：视为非法输入
     """
     subtype_text = str(recognize_subtype or "").strip()
     if subtype_text in OCR_SUBTYPES:
         return MeterSubtypeResolution(mode="digital")
     if subtype_text in {"", "default"}:
-        return MeterSubtypeResolution(mode="pointer", scale=default_scale)
+        raise ValueError("Meter recognize_subtype must be an explicit float scale or a reserved OCR subtype.")
     try:
         return MeterSubtypeResolution(mode="pointer", scale=float(subtype_text))
     except ValueError as exc:
@@ -117,8 +117,6 @@ def normalize_data_types(data_types: Any) -> list[dict[str, str]]:
 
         recognize_subtype_raw = item.get("recognize_subtype", "")
         recognize_subtype = "" if recognize_subtype_raw in (None, "") else str(recognize_subtype_raw).strip()
-        if task_kind == TASK_KIND_METER and not recognize_subtype:
-            recognize_subtype = "default"
         normalized.append({"recognize_type": recognize_type, "recognize_subtype": recognize_subtype})
     return normalized
 

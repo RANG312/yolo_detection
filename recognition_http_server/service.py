@@ -205,7 +205,7 @@ class RecognitionService:
         debug_center: bool,
     ) -> list[dict[str, str]]:
         """将表计请求分发到指针表或数码表处理逻辑。"""
-        meter_subtype = resolve_meter_subtype(data_type["recognize_subtype"], self.config.max_value)
+        meter_subtype = resolve_meter_subtype(data_type["recognize_subtype"])
         if meter_subtype.mode == "digital":
             return run_digital_meter_recognition(self, local_image_path, [data_type], visualize_path, extra_info)
         return run_pointer_meter_recognition(
