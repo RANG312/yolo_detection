@@ -5,7 +5,6 @@ from pathlib import Path
 import cv2
 
 from dial_reading import save_canvas
-from recognition_http_server.helpers import build_error_data_entry
 
 
 def run_detection_recognition(service, local_image_path: Path, model, data_types: list[dict[str, str]], visualize_path: Path, task_desc: str) -> list[dict[str, str]]:
@@ -30,18 +29,14 @@ def run_detection_recognition(service, local_image_path: Path, model, data_types
         )
     result = results[0]
 
-    plotted = result.plot()
-    save_canvas(cv2.cvtColor(plotted, cv2.COLOR_BGR2RGB), visualize_path)
-
     recognize_items: list[dict[str, str]] = []
     boxes = result.boxes
     if boxes is None or len(boxes) == 0:
-        for data_type in data_types:
-            recognize_item = build_error_data_entry(data_type, f"{task_desc}未检测到目标")
-            recognize_item["recognize_image_index"] = "0"
-            recognize_items.append(recognize_item)
         service.logger.warning("detection recognition found no targets: task=%s image=%s", task_desc, local_image_path)
-        return recognize_items
+        raise ValueError(f"{task_desc}未检测到目标")
+
+    plotted = result.plot()
+    save_canvas(cv2.cvtColor(plotted, cv2.COLOR_BGR2RGB), visualize_path)
 
     names = result.names if isinstance(result.names, dict) else {i: name for i, name in enumerate(result.names)}
     for detect_index, box in enumerate(boxes, start=1):
