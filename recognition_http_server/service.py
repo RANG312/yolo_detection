@@ -15,6 +15,7 @@ from recognition_http_server.handlers.detection import run_detection_recognition
 from recognition_http_server.handlers.meter import run_digital_meter_recognition, run_pointer_meter_recognition
 from recognition_http_server.helpers import (
     align_data_types_to_images,
+    build_error_data_entry,
     build_callback_url,
     normalize_data_types,
     now_text,
@@ -181,18 +182,35 @@ class RecognitionService:
             data_type["recognize_subtype"],
             image_path,
         )
-        recognize_items = handler.runner(local_image_path, data_type, image_result_path, extra_info, debug_center)
-        self.logger.info(
-            "image processing finished: req_id=%s index=%s task_kind=%s result_path=%s items=%s",
-            req_id,
-            index,
-            task_kind,
-            image_result_path,
-            len(recognize_items),
-        )
+        try:
+            recognize_items = handler.runner(local_image_path, data_type, image_result_path, extra_info, debug_center)
+            result_image_path = str(image_result_path)
+            self.logger.info(
+                "image processing finished: req_id=%s index=%s task_kind=%s result_path=%s items=%s",
+                req_id,
+                index,
+                task_kind,
+                image_result_path,
+                len(recognize_items),
+            )
+        except Exception as exc:
+            error_text = str(exc)
+            recognize_item = build_error_data_entry(data_type, error_text)
+            recognize_item["recognize_image_index"] = "0"
+            recognize_item["recognize_value"] = ""
+            recognize_item["confidence"] = ""
+            recognize_items = [recognize_item]
+            result_image_path = image_path
+            self.logger.exception(
+                "image processing failed and downgraded to error result: req_id=%s index=%s task_kind=%s source=%s",
+                req_id,
+                index,
+                task_kind,
+                image_path,
+            )
         return {
             "image_path": image_path,
-            "image_path_result": str(image_result_path),
+            "image_path_result": result_image_path,
             "recognize_data": recognize_items,
         }
 
