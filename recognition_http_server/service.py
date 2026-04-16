@@ -200,7 +200,7 @@ class RecognitionService:
             recognize_item["recognize_value"] = ""
             recognize_item["confidence"] = ""
             recognize_items = [recognize_item]
-            result_image_path = image_path
+            result_image_path = ""
             self.logger.exception(
                 "image processing failed and downgraded to error result: req_id=%s index=%s task_kind=%s source=%s",
                 req_id,
