@@ -85,6 +85,14 @@ activate_env_cleanly() {
   local conda_sh="$1"
   local env_name="$2"
 
+  # Some packaged env activation hooks source third-party scripts that are
+  # not nounset-safe, so relax `set -u` only around conda shell operations.
+  local had_nounset=0
+  if [[ $- == *u* ]]; then
+    had_nounset=1
+    set +u
+  fi
+
   # shellcheck disable=SC1090
   source "${conda_sh}"
 
@@ -94,6 +102,10 @@ activate_env_cleanly() {
 
   log "激活 conda 环境: ${env_name}"
   conda activate "${env_name}"
+
+  if [[ "${had_nounset}" -eq 1 ]]; then
+    set -u
+  fi
 }
 
 run_conda_unpack_if_present() {
@@ -203,8 +215,10 @@ main() {
   write_conda_hooks "${CONDA_PREFIX}" "${cudss_lib_dir}"
 
   log "重新激活环境以立即应用新配置"
+  set +u
   conda deactivate
   conda activate "${ENV_NAME}"
+  set -u
 
   log "部署完成"
   log "CONDA_PREFIX=${CONDA_PREFIX}"
