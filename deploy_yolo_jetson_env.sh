@@ -56,8 +56,12 @@ ensure_archive_in_envs() {
   mkdir -p "${envs_dir}"
 
   if [[ -f "${ARCHIVE_SOURCE_PATH}" ]]; then
-    log "移动 ${ARCHIVE_SOURCE_PATH} -> ${archive_target_path}"
-    mv -f "${ARCHIVE_SOURCE_PATH}" "${archive_target_path}"
+    if [[ "${ARCHIVE_SOURCE_PATH}" -ef "${archive_target_path}" ]]; then
+      log "复用已存在压缩包: ${archive_target_path}"
+    else
+      log "复制 ${ARCHIVE_SOURCE_PATH} -> ${archive_target_path}"
+      cp -f "${ARCHIVE_SOURCE_PATH}" "${archive_target_path}"
+    fi
   elif [[ -f "${archive_target_path}" ]]; then
     log "复用已存在压缩包: ${archive_target_path}"
   else
