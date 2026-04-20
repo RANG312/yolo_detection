@@ -195,6 +195,15 @@ EOF
   log "已写入 conda 长期配置: ${activate_hook}"
 }
 
+remove_resources_dir_if_present() {
+  if [[ -d "${RESOURCES_DIR}" ]]; then
+    log "删除部署资源目录: ${RESOURCES_DIR}"
+    rm -rf "${RESOURCES_DIR}"
+  else
+    log "未找到资源目录，跳过删除: ${RESOURCES_DIR}"
+  fi
+}
+
 main() {
   local conda_base=""
   local conda_sh=""
@@ -223,6 +232,8 @@ main() {
   conda deactivate
   conda activate "${ENV_NAME}"
   set -u
+
+  remove_resources_dir_if_present
 
   log "部署完成"
   log "CONDA_PREFIX=${CONDA_PREFIX}"

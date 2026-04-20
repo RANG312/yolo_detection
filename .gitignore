@@ -226,3 +226,4 @@ runs/train/meter_data_9k_yolov8m_2026*/
 !runs/train/meter_data_9k_yolov8m_best/weights/best.pt
 
 .codex
+api_definition.txt
