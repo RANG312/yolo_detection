@@ -207,6 +207,17 @@ remove_resources_dir_if_present() {
   fi
 }
 
+remove_git_dir_if_present() {
+  local git_dir="${SCRIPT_DIR}/.git"
+
+  if [[ -d "${git_dir}" ]]; then
+    log "删除 Git 元数据目录: ${git_dir}"
+    rm -rf "${git_dir}"
+  else
+    log "未找到 Git 元数据目录，跳过删除: ${git_dir}"
+  fi
+}
+
 main() {
   local conda_base=""
   local conda_sh=""
@@ -244,6 +255,7 @@ main() {
   set -u
 
   remove_resources_dir_if_present
+  remove_git_dir_if_present
 
   log "部署完成"
   log "CONDA_PREFIX=${CONDA_PREFIX}"
