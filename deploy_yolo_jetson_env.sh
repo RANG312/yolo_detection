@@ -77,12 +77,13 @@ unpack_env_if_needed() {
 
   if [[ -d "${env_prefix}" && -f "${env_prefix}/bin/python" ]]; then
     log "检测到已存在环境，跳过解压: ${env_prefix}"
-    return 0
+    return 1
   fi
 
   mkdir -p "${env_prefix}"
   log "解压环境到 ${env_prefix}"
   tar -xzf "${archive_path}" -C "${env_prefix}"
+  return 0
 }
 
 activate_env_cleanly() {
@@ -211,6 +212,7 @@ main() {
   local archive_path=""
   local env_prefix=""
   local cudss_lib_dir=""
+  local env_was_unpacked=0
 
   conda_base="$(find_conda_base)" || fail "未找到 miniconda/anaconda，请确认 conda 已安装"
   conda_sh="$(find_conda_sh "${conda_base}")"
@@ -219,10 +221,16 @@ main() {
 
   log "检测到 conda 根目录: ${conda_base}"
   archive_path="$(ensure_archive_in_envs "${envs_dir}")"
-  unpack_env_if_needed "${archive_path}" "${env_prefix}"
+  if unpack_env_if_needed "${archive_path}" "${env_prefix}"; then
+    env_was_unpacked=1
+  fi
 
   activate_env_cleanly "${conda_sh}" "${ENV_NAME}"
-  run_conda_unpack_if_present
+  if [[ "${env_was_unpacked}" -eq 1 ]]; then
+    run_conda_unpack_if_present
+  else
+    log "环境已存在，跳过 conda-unpack"
+  fi
 
   cudss_lib_dir="$(ensure_cudss_installed)"
   write_conda_hooks "${CONDA_PREFIX}" "${cudss_lib_dir}"
