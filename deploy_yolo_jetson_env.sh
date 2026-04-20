@@ -128,6 +128,8 @@ find_cudss_library_dir() {
   for path in \
     /usr/lib/aarch64-linux-gnu \
     /usr/lib/aarch64-linux-gnu/12 \
+    /usr/lib/aarch64-linux-gnu/libcudss \
+    /usr/lib/aarch64-linux-gnu/libcudss/12 \
     /usr/local/cuda/lib64 \
     /usr/local/cuda/targets/aarch64-linux/lib; do
     if compgen -G "${path}/libcudss.so*" >/dev/null; then
