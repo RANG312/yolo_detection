@@ -8,6 +8,8 @@ ENV_NAME="yolo-jetson"
 ARCHIVE_SOURCE_PATH="${RESOURCES_DIR}/${ARCHIVE_NAME}"
 DEB_NAME="libcudss0-cuda-12_0.7.1.4-1_arm64.deb"
 DEB_SOURCE_PATH="${RESOURCES_DIR}/${DEB_NAME}"
+SYSTEMD_SERVICE_NAME="yolo-jetson.service"
+SYSTEMD_SERVICE_PATH="/etc/systemd/system/${SYSTEMD_SERVICE_NAME}"
 
 log() {
   echo "[deploy] $*" >&2
@@ -218,6 +220,57 @@ remove_git_dir_if_present() {
   fi
 }
 
+write_systemd_service_file() {
+  local service_path="$1"
+  local run_user="$2"
+  local working_dir="$3"
+  local conda_sh="$4"
+  local env_prefix="$5"
+  local server_script="${working_dir}/server.py"
+
+  [[ -f "${server_script}" ]] || fail "未找到服务入口脚本: ${server_script}"
+
+  sudo tee "${service_path}" >/dev/null <<EOF
+[Unit]
+Description=AI Detection Server
+After=network.target
+
+[Service]
+Type=simple
+User=${run_user}
+WorkingDirectory=${working_dir}
+Environment=PYTHONNOUSERSITE=1
+ExecStart=/bin/bash -lc 'source "${conda_sh}" && conda activate "${env_prefix}" && exec python "${server_script}"'
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+  log "已写入 systemd 服务模板: ${service_path}"
+}
+
+install_systemd_service() {
+  local service_path="$1"
+  local run_user="$2"
+  local working_dir="$3"
+  local conda_sh="$4"
+  local env_prefix="$5"
+
+  log "安装 systemd 服务: ${SYSTEMD_SERVICE_NAME}"
+  write_systemd_service_file "${service_path}" "${run_user}" "${working_dir}" "${conda_sh}" "${env_prefix}"
+
+  log "刷新 systemd 配置"
+  sudo systemctl daemon-reload
+
+  log "启用开机自启: ${SYSTEMD_SERVICE_NAME}"
+  sudo systemctl enable "${SYSTEMD_SERVICE_NAME}"
+
+  log "当前 ${SYSTEMD_SERVICE_NAME} 自启状态"
+  sudo systemctl is-enabled "${SYSTEMD_SERVICE_NAME}"
+}
+
 main() {
   local conda_base=""
   local conda_sh=""
@@ -226,6 +279,7 @@ main() {
   local env_prefix=""
   local cudss_lib_dir=""
   local env_was_unpacked=0
+  local run_user="root"
 
   conda_base="$(find_conda_base)" || fail "未找到 miniconda/anaconda，请确认 conda 已安装"
   conda_sh="$(find_conda_sh "${conda_base}")"
@@ -253,6 +307,8 @@ main() {
   conda deactivate
   conda activate "${ENV_NAME}"
   set -u
+
+  install_systemd_service "${SYSTEMD_SERVICE_PATH}" "${run_user}" "${SCRIPT_DIR}" "${conda_sh}" "${env_prefix}"
 
   remove_resources_dir_if_present
   remove_git_dir_if_present
