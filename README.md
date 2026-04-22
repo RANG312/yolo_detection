@@ -12,7 +12,7 @@
 ## 快速开始
 
 ### http server
-- conda环境部署：运行 `bash deploy_yolo_jetson_env.sh`自动部署环境，同时会删除相关的安装包和.git，以节省空间
+- conda环境部署：运行 `bash deploy_yolo_jetson_env.sh`自动部署环境，同时会删除相关的安装包和.git节省空间, 并添加自启的systemd服务
 - 日志：` results/http_service/logs/server.log `
 - 修改参数： ` recognition_http_server/constants.py ` 
 
