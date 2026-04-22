@@ -8,7 +8,7 @@ ENV_NAME="yolo-jetson"
 ARCHIVE_SOURCE_PATH="${RESOURCES_DIR}/${ARCHIVE_NAME}"
 DEB_NAME="libcudss0-cuda-12_0.7.1.4-1_arm64.deb"
 DEB_SOURCE_PATH="${RESOURCES_DIR}/${DEB_NAME}"
-SYSTEMD_SERVICE_NAME="yolo-jetson.service"
+SYSTEMD_SERVICE_NAME="ai_detection.service"
 SYSTEMD_SERVICE_PATH="/etc/systemd/system/${SYSTEMD_SERVICE_NAME}"
 
 log() {
@@ -267,8 +267,11 @@ install_systemd_service() {
   log "启用开机自启: ${SYSTEMD_SERVICE_NAME}"
   sudo systemctl enable "${SYSTEMD_SERVICE_NAME}"
 
-  log "当前 ${SYSTEMD_SERVICE_NAME} 自启状态"
-  sudo systemctl is-enabled "${SYSTEMD_SERVICE_NAME}"
+  log "重启服务: ${SYSTEMD_SERVICE_NAME}"
+  sudo systemctl restart "${SYSTEMD_SERVICE_NAME}"
+
+  log "当前 ${SYSTEMD_SERVICE_NAME} 服务状态"
+  sudo systemctl status --no-pager "${SYSTEMD_SERVICE_NAME}"
 }
 
 main() {
