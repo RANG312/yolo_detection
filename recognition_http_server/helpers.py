@@ -62,6 +62,26 @@ def make_filename_from_url(url: str, fallback: str) -> str:
     return fallback
 
 
+def build_detection_result_path(image_path: str) -> Path | None:
+    """
+    基于请求里的原图路径生成第二份检测结果图路径。
+
+    规则：
+    - 本地文件：在扩展名前追加 `-detection`
+    - HTTP/HTTPS URL：无法直接落盘到远端路径，返回 `None`
+    """
+    if is_http_url(image_path):
+        return None
+
+    resolved_path = Path(image_path).expanduser()
+    if not resolved_path.is_absolute():
+        resolved_path = Path.cwd() / resolved_path
+
+    if resolved_path.suffix:
+        return resolved_path.with_name(f"{resolved_path.stem}-detection{resolved_path.suffix}")
+    return resolved_path.with_name(f"{resolved_path.name}-detection")
+
+
 def build_callback_url(callback_host: str, callback_port: int) -> str:
     """根据回调主机和配置端口拼接完整回调地址。"""
     return f"http://{callback_host}:{callback_port}{DEFAULT_CALLBACK_PATH}"

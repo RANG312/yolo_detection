@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import threading
+import shutil
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -15,6 +16,7 @@ from recognition_http_server.handlers.detection import run_detection_recognition
 from recognition_http_server.handlers.meter import run_digital_meter_recognition, run_pointer_meter_recognition
 from recognition_http_server.helpers import (
     align_data_types_to_images,
+    build_detection_result_path,
     build_error_data_entry,
     build_callback_url,
     normalize_data_types,
@@ -174,6 +176,7 @@ class RecognitionService:
             raise ValueError(f"No handler registered for task kind: {task_kind}")
 
         image_result_path = image_output_dir / f"{local_image_path.stem}_result_{handler.result_suffix}.jpg"
+        detection_result_path = build_detection_result_path(image_path)
         self.logger.info(
             "image processing started: req_id=%s index=%s task_kind=%s subtype=%s source=%s",
             req_id,
@@ -185,12 +188,24 @@ class RecognitionService:
         try:
             recognize_items = handler.runner(local_image_path, data_type, image_result_path, extra_info, debug_center)
             result_image_path = str(image_result_path)
+            if detection_result_path is not None and image_result_path.exists():
+                detection_result_path.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(image_result_path, detection_result_path)
+                result_image_path = str(detection_result_path)
+                self.logger.info(
+                    "secondary result image saved: req_id=%s index=%s task_kind=%s secondary_path=%s primary_path=%s",
+                    req_id,
+                    index,
+                    task_kind,
+                    detection_result_path,
+                    image_result_path,
+                )
             self.logger.info(
                 "image processing finished: req_id=%s index=%s task_kind=%s result_path=%s items=%s",
                 req_id,
                 index,
                 task_kind,
-                image_result_path,
+                result_image_path,
                 len(recognize_items),
             )
         except Exception as exc:

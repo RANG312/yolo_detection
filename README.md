@@ -335,6 +335,13 @@ python server.py \
 results/http_service/outputs/<req_id>/
 ```
 
+额外结果保存规则：
+
+- 如果请求中的 `image_path` 是本地路径，服务会额外复制一份结果图到原图同目录
+- 文件名规则为在扩展名前追加 `-detection`
+- 例如 `/data/test/a.jpg` 会额外生成 `/data/test/a-detection.jpg`
+- 如果请求中的 `image_path` 是 URL，则无法写回远端路径，仍只保留 `results/http_service/outputs/<req_id>/` 下的结果图
+
 结果图命名规则：
 
 - 表计：`*_result_meter.jpg`
@@ -351,7 +358,7 @@ results/http_service/outputs/<req_id>/
   "data_result": [
     {
       "image_path": "/data/test/a.jpg",
-      "image_path_result": "results/http_service/outputs/demo-0001/a_result_fire.jpg",
+      "image_path_result": "/data/test/a-detection.jpg",
       "recognize_data": [
         {
           "recognize_image_index": "1",

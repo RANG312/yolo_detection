@@ -215,7 +215,7 @@ topic 中的 `data` 字段内容，是识别完成后的完整 JSON 字符串。
   "data_result": [
     {
       "image_path": "/data/test/meter.jpg",
-      "image_path_result": "results/http_service/outputs/demo-0001/meter_result_meter.jpg",
+      "image_path_result": "/data/test/meter-detection.jpg",
       "recognize_data": []
     }
   ],
