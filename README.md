@@ -1,6 +1,6 @@
 # HTTP 识别服务说明
 
-本文档说明当前仓库中的 HTTP 识别服务、测试脚本和代码结构。
+本文档说明当前仓库中的 `HTTP` 识别服务、测试脚本和代码结构。
 
 相关文件：
 
@@ -21,6 +21,7 @@
 - 再运行 ``` source ./ros2_recognition_service/source_ros2_ws.bash ```
 - 接着ros2 launch 节点 ``` bash ros2_recognition_service/launch_recognition_service.sh ```
 - 可以在 `ros2_recognition_service/config/recognition.yaml` 中设置相关配置参数
+- 详细介绍参考 `ros2_recognition_service/README.md `
 
 ## 1. 总体说明
 
@@ -78,24 +79,18 @@ recognition_http_server/
 
 ## 3. 启动方式
 
-推荐在仓库根目录 `/data/prj/yolov8_dial_reading/ultralytics` 下启动。
+推荐在仓库根目录下启动。
 
 可用方式：
 
 ```bash
-python3 server.py
-```
-
-或：
-
-```bash
-python3 -m recognition_http_server.app
+python server.py
 ```
 
 也兼容直接运行：
 
 ```bash
-python3 recognition_http_server/app.py
+python recognition_http_server/app.py
 ```
 
 ## 4. 启动参数
@@ -119,7 +114,7 @@ python3 recognition_http_server/app.py
 示例：
 
 ```bash
-python3 server.py \
+python server.py \
   --host 0.0.0.0 \
   --port 3208 \
   --model runs/train/meter_data_9k_yolov8m_best/weights/best.pt \
@@ -443,7 +438,7 @@ results/http_service/outputs/<req_id>/
 示例：
 
 ```bash
-python3 test_http.py \
+python test_http.py \
   --server http://127.0.0.1:3208 \
   --images /data/test/a.jpg \
   --data-type 6
@@ -452,7 +447,7 @@ python3 test_http.py \
 也支持把类型和 subtype 拆开传：
 
 ```bash
-python3 test_http.py \
+python test_http.py \
   --server http://127.0.0.1:3208 \
   --images /data/test/a.jpg \
   --recognize-type 1 \
@@ -534,7 +529,7 @@ python3 test_http.py \
 1. 在仓库根目录启动服务：
 
 ```bash
-python3 server.py
+python server.py
 ```
 
 2. 使用 `test_http.py` 提交任务：
@@ -542,7 +537,7 @@ python3 server.py
 火源检测：
 
 ```bash
-python3 test_http.py \
+python test_http.py \
   --server http://127.0.0.1:3208 \
   --images /data/test/fire.jpg \
   --data-type 6
@@ -551,7 +546,7 @@ python3 test_http.py \
 安全帽检测：
 
 ```bash
-python3 test_http.py \
+python test_http.py \
   --server http://127.0.0.1:3208 \
   --images /data/test/safehat.jpg \
   --data-type 7
@@ -560,7 +555,7 @@ python3 test_http.py \
 指针表读数：
 
 ```bash
-python3 test_http.py \
+python test_http.py \
   --server http://127.0.0.1:3208 \
   --images /data/test/meter.jpg \
   --data-type 1:25
@@ -569,7 +564,7 @@ python3 test_http.py \
 或：
 
 ```bash
-python3 test_http.py \
+python test_http.py \
   --server http://127.0.0.1:3208 \
   --images /data/test/meter.jpg \
   --recognize-type 1 \
@@ -579,7 +574,7 @@ python3 test_http.py \
 数码表骨架联调：
 
 ```bash
-python3 test_http.py \
+python test_http.py \
   --server http://127.0.0.1:3208 \
   --images /data/test/digital.jpg \
   --data-type 1:digital
@@ -588,7 +583,7 @@ python3 test_http.py \
 或：
 
 ```bash
-python3 test_http.py \
+python test_http.py \
   --server http://127.0.0.1:3208 \
   --images /data/test/digital.jpg \
   --recognize-type 1 \
