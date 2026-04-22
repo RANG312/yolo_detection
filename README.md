@@ -9,6 +9,19 @@
 - [recognition_http_server/service.py](/data/prj/yolov8_dial_reading/ultralytics/recognition_http_server/service.py)：核心任务编排层
 - [test_http.py](/data/prj/yolov8_dial_reading/ultralytics/test_http.py)：本地联调脚本
 
+## 快速开始
+
+### http server
+- conda环境部署：运行 `bash deploy_yolo_jetson_env.sh`自动部署环境，同时会删除相关的安装包和.git，以节省空间
+- 日志：` results/http_service/logs/server.log `
+- 修改参数： ` recognition_http_server/constants.py ` 
+
+### ROS2 humble
+- 先运行 ``` bash ros2_recognition_service/deploy_ros2_ws.sh``` 构建ros2工作区并编译
+- 再运行 ``` source ./ros2_recognition_service/source_ros2_ws.bash ```
+- 接着ros2 launch 节点 ``` bash ros2_recognition_service/launch_recognition_service.sh ```
+- 可以在 `ros2_recognition_service/config/recognition.yaml` 中设置相关配置参数
+
 ## 1. 总体说明
 
 当前服务支持 3 类识别任务：
