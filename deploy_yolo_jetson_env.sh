@@ -160,7 +160,7 @@ ensure_cudss_installed() {
 
   [[ -f "${DEB_SOURCE_PATH}" ]] || fail "未找到安装包: ${DEB_SOURCE_PATH}"
   log "未检测到 libcudss，执行 sudo apt install ${DEB_SOURCE_PATH}"
-  sudo apt install -y "${DEB_SOURCE_PATH}"
+  sudo apt install -y "${DEB_SOURCE_PATH}" >&2
 
   lib_dir="$(find_cudss_library_dir)" || fail "libcudss 安装后仍未找到动态库"
   log "libcudss 安装完成: ${lib_dir}"
@@ -174,6 +174,8 @@ write_conda_hooks() {
   local deactivate_dir="${env_prefix}/etc/conda/deactivate.d"
   local activate_hook="${activate_dir}/libcudss.sh"
   local deactivate_hook="${deactivate_dir}/libcudss.sh"
+
+  [[ -d "${lib_dir}" ]] || fail "Invalid libcudss path: ${lib_dir}"
 
   mkdir -p "${activate_dir}" "${deactivate_dir}"
 
@@ -303,6 +305,7 @@ main() {
   fi
 
   cudss_lib_dir="$(ensure_cudss_installed)"
+  [[ -d "${cudss_lib_dir}" ]] || fail "Invalid libcudss path: ${cudss_lib_dir}"
   write_conda_hooks "${CONDA_PREFIX}" "${cudss_lib_dir}"
 
   log "重新激活环境以立即应用新配置"
