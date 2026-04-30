@@ -14,6 +14,7 @@ from ultralytics import YOLO
 
 LEGACY_EXPECTED_CLASSES = {"start", "point", "end"}
 METER_DATA_9K_EXPECTED_CLASSES = {"gauge", "center", "pointer_tip", "max_tick", "min_tick"}
+METER_DATA_9K_GAUGE_RETRY_SIZE = 640
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
 def parse_args() -> argparse.Namespace:
@@ -715,6 +716,37 @@ def sort_boxes_reading_order(boxes: list[np.ndarray]) -> list[np.ndarray]:
     return sorted(boxes, key=lambda box: (float(box[1]), float(box[0])))
 
 
+def resize_gauge_crop_for_retry(image: np.ndarray, gauge_box: np.ndarray) -> np.ndarray:
+    gauge_roi, _ = crop_roi(image, gauge_box)
+    return cv2.resize(
+        gauge_roi,
+        (METER_DATA_9K_GAUGE_RETRY_SIZE, METER_DATA_9K_GAUGE_RETRY_SIZE),
+        interpolation=cv2.INTER_LINEAR,
+    )
+
+
+def ensure_retry_gauge_detection(
+    detections: dict[str, list[dict[str, np.ndarray | float]]],
+    image_shape: tuple[int, int, int],
+) -> dict[str, list[dict[str, np.ndarray | float]]]:
+    if detections.get("gauge"):
+        return detections
+
+    point_classes = METER_DATA_9K_EXPECTED_CLASSES - {"gauge"}
+    if not any(detections.get(name) for name in point_classes):
+        return detections
+
+    height, width = image_shape[:2]
+    detections = {name: values.copy() for name, values in detections.items()}
+    detections["gauge"] = [
+        {
+            "box": np.array([0.0, 0.0, float(width - 1), float(height - 1)], dtype=np.float64),
+            "conf": 1.0,
+        }
+    ]
+    return detections
+
+
 def assign_meter_data_9k_instances(
     detections: dict[str, list[dict[str, np.ndarray | float]]],
 ) -> list[dict[str, dict[str, np.ndarray | float]]]:
@@ -883,7 +915,45 @@ def predict_image_instances(
     detections = collect_all_detections(results[0])
 
     if annotation_mode == "meter_data_9k":
-        detection_instances = assign_meter_data_9k_instances(detections)
+        gauge_detections = detections.get("gauge", [])
+        if not gauge_detections:
+            raise ValueError("Missing required detections: ['gauge']")
+
+        sorted_gauge_boxes = sort_boxes_reading_order([item["box"] for item in gauge_detections])
+        gauge_box = sorted_gauge_boxes[0]
+        gauge_detection = next(
+            item
+            for item in gauge_detections
+            if tuple(np.asarray(item["box"], dtype=np.float64).tolist())
+            == tuple(np.asarray(gauge_box, dtype=np.float64).tolist())
+        )
+        retry_image = resize_gauge_crop_for_retry(image, gauge_box)
+
+        retry_start = time.perf_counter()
+        retry_results = model.predict(
+            source=retry_image,
+            imgsz=METER_DATA_9K_GAUGE_RETRY_SIZE,
+            conf=args.conf,
+            device=args.device,
+            verbose=False,
+        )
+        inference_time += time.perf_counter() - retry_start
+        retry_detections = collect_all_detections(retry_results[0])
+        retry_detections = ensure_retry_gauge_detection(retry_detections, retry_image.shape)
+        try:
+            detection_instances = assign_meter_data_9k_instances(retry_detections)
+            image = retry_image
+        except Exception as exc:
+            detection_instances = [
+                {
+                    "gauge": {
+                        "box": gauge_box,
+                        "conf": gauge_detection["conf"],
+                        "recognize_image_index": 1,
+                    },
+                    "_error": {"message": str(exc)},
+                }
+            ]
     else:
         best_detections = collect_best_detections(results[0])
         required_classes = LEGACY_EXPECTED_CLASSES
@@ -896,6 +966,8 @@ def predict_image_instances(
     prediction_instances: list[dict[str, Any]] = []
     for index, detection_instance in enumerate(detection_instances, start=1):
         try:
+            if "_error" in detection_instance:
+                raise ValueError(str(detection_instance["_error"]["message"]))
             geometry = compute_reading_from_detection_instance(image, detection_instance, annotation_mode, args.debug_center)
             reading = args.min_value + geometry["ratio"] * (args.max_value - args.min_value)
             geometry["reading"] = reading

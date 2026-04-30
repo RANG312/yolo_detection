@@ -21,12 +21,12 @@ def run_pointer_meter_recognition(service, local_image_path: Path, data_types: l
         canvas, prediction_instances, _, _ = predict_image_instances(
             local_image_path, service.meter_model, predict_args, service.config.annotation_mode
         )
-    save_canvas(canvas, visualize_path)
-
     recognize_items: list[dict[str, str]] = []
+    has_success = False
     for meter_instance in prediction_instances:
         recognize_image_index = str(meter_instance["recognize_image_index"])
         if meter_instance.get("error") is None:
+            has_success = True
             normalized_reading = float(meter_instance["reading"])
             final_reading = normalized_reading * scale
             arc_mode = str(meter_instance["arc_mode"])
@@ -44,6 +44,9 @@ def run_pointer_meter_recognition(service, local_image_path: Path, data_types: l
                 recognize_item = build_error_data_entry(data_type, error_text)
                 recognize_item["recognize_image_index"] = recognize_image_index
                 recognize_items.append(recognize_item)
+
+    if has_success:
+        save_canvas(canvas, visualize_path)
 
     service.logger.info(
         "meter recognition finished: image=%s meters=%s output=%s",

@@ -187,8 +187,9 @@ class RecognitionService:
         )
         try:
             recognize_items = handler.runner(local_image_path, data_type, image_result_path, extra_info, debug_center)
-            result_image_path = str(image_result_path)
-            if detection_result_path is not None and image_result_path.exists():
+            has_success = any(item.get("recognize_value") for item in recognize_items)
+            result_image_path = str(image_result_path) if has_success else image_path
+            if has_success and detection_result_path is not None and image_result_path.exists():
                 detection_result_path.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(image_result_path, detection_result_path)
                 result_image_path = str(detection_result_path)
@@ -215,7 +216,7 @@ class RecognitionService:
             recognize_item["recognize_value"] = ""
             recognize_item["confidence"] = ""
             recognize_items = [recognize_item]
-            result_image_path = ""
+            result_image_path = image_path
             self.logger.exception(
                 "image processing failed and downgraded to error result: req_id=%s index=%s task_kind=%s source=%s",
                 req_id,
