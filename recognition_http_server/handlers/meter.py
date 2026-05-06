@@ -4,7 +4,7 @@ from pathlib import Path
 
 import cv2
 
-from dial_reading import predict_image_instances, save_canvas
+from recognition_http_server.dial_reading import predict_image_instances, save_canvas
 from recognition_http_server.helpers import build_error_data_entry, build_meter_predict_args, build_success_data_entry
 
 

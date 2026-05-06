@@ -4,7 +4,7 @@ from pathlib import Path
 
 import cv2
 
-from dial_reading import save_canvas
+from recognition_http_server.dial_reading import save_canvas
 
 
 def run_detection_recognition(service, local_image_path: Path, model, data_types: list[dict[str, str]], visualize_path: Path, task_desc: str) -> list[dict[str, str]]:

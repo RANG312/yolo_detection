@@ -15,6 +15,15 @@ sys.modules.setdefault("ultralytics", ultralytics_stub)
 import dial_reading
 
 
+def test_dial_reading_package_reexports_public_entrypoints() -> None:
+    from recognition_http_server import dial_reading as package
+
+    assert package.load_model is not None
+    assert package.predict_image_instances is not None
+    assert package.predict_single_image is not None
+    assert package.save_canvas is not None
+
+
 class FakeBoxes:
     def __init__(self, data: list[list[float]]) -> None:
         self.data = np.array(data, dtype=np.float64)

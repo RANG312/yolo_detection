@@ -9,9 +9,9 @@ from uuid import uuid4
 import requests
 from ultralytics import YOLO
 
-from dial_reading import load_model
 from log_manager import GlobalLogManager
 from recognition_http_server.constants import TASK_KIND_FIRE, TASK_KIND_METER, TASK_KIND_SAFEHAT
+from recognition_http_server.dial_reading import load_model
 from recognition_http_server.handlers.detection import run_detection_recognition
 from recognition_http_server.handlers.meter import run_digital_meter_recognition, run_pointer_meter_recognition
 from recognition_http_server.helpers import (
