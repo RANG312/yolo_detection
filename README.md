@@ -52,6 +52,15 @@ recognition_http_server/
   http_api.py
   service.py
   schemas.py
+  dial_reading/
+    __init__.py
+    cli.py
+    constants.py
+    detections.py
+    geometry.py
+    pipeline.py
+    visualization.py
+    README.md
   handlers/
     detection.py
     meter.py
@@ -67,15 +76,45 @@ recognition_http_server/
 - `helpers.py`：请求字段解析、任务类型路由、结果结构辅助函数
 - `http_api.py`：HTTP 协议层
 - `service.py`：任务状态、模型加载、任务调度
+- `dial_reading/`：指针表计读数子包，承载原 `dial_reading.py` 中的模型推理、检测实例分配、几何读数和命令行能力
 - `handlers/detection.py`：通用检测执行链路
 - `handlers/meter.py`：表计相关执行链路
 - `utils/image_io.py`：图片下载和本地路径准备
+
+### 2.1 dial_reading 子包结构
+
+`recognition_http_server/dial_reading/` 是指针表计读数逻辑的主实现目录。仓库根目录的 `dial_reading.py` 现在只保留兼容入口，继续支持旧脚本导入和 `python dial_reading.py` 命令。
+
+```text
+recognition_http_server/dial_reading/
+  __init__.py
+  cli.py
+  constants.py
+  detections.py
+  geometry.py
+  pipeline.py
+  visualization.py
+  README.md
+```
+
+职责划分：
+
+- `__init__.py`：对外导出表计读数的公共入口，供 HTTP 服务和旧兼容层复用
+- `cli.py`：命令行参数、单图运行、批量测试和终端输出逻辑
+- `constants.py`：表计模型类别集合、9k 数据集重试尺寸等常量
+- `detections.py`：YOLO 原始检测框整理、gauge 裁剪重试、点位框与表盘实例分配
+- `geometry.py`：ROI 裁剪、中心估计、刻度点/指针尖端提取、圆弧比例计算
+- `pipeline.py`：模型加载、推理编排、检测结果到读数实例的主流程
+- `visualization.py`：结果图绘制和保存
+- `README.md`：表计读数模块的细节说明
 
 兼容性说明：
 
 - `server.py` 当前仍然保留
 - `server.py` 会重新导出 `RecognitionService`、`TaskState`、`make_error_payload`、`now_text` 和各类 `DEFAULT_*` 常量
 - 这样做是为了不影响当前 ROS2 服务对 `server.py` 的依赖
+- `dial_reading.py` 当前仍然保留
+- `dial_reading.py` 会转发到 `recognition_http_server/dial_reading/` 子包，兼容旧的命令行用法和外部导入
 
 ## 3. 启动方式
 
@@ -133,7 +172,8 @@ python server.py \
 
 说明：
 
-- 表计任务当前仍然复用 [dial_reading.py](/data/prj/yolov8_dial_reading/ultralytics/dial_reading.py) 的关键点检测和几何后处理逻辑
+- 表计任务当前使用 [recognition_http_server/dial_reading/](/data/prj/yolov8_dial_reading/ultralytics/recognition_http_server/dial_reading) 子包完成关键点检测、实例分配和几何后处理
+- [dial_reading.py](/data/prj/yolov8_dial_reading/ultralytics/dial_reading.py) 只作为旧入口兼容层保留
 - 火源和安全帽任务走通用 YOLO 检测链路
 
 ## 6. 任务类型路由规则
@@ -200,7 +240,7 @@ python server.py \
 指针表执行步骤：
 
 1. 表计模型检测关键元素
-2. 调用 `dial_reading.py` 中的后处理逻辑
+2. 调用 `recognition_http_server/dial_reading/pipeline.py` 中的表计后处理流程
 3. 得到归一化读数
 4. 根据 `recognize_subtype` 解析得到量程
 5. 返回 `归一化读数 * 量程` 作为最终读数
