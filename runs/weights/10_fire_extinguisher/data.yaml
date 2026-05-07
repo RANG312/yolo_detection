@@ -1,0 +1,10 @@
+# dataset path
+train: /home/robot/wl/FireExtinguisher.v2i.voc/Dataset/images/train
+val: /home/robot/wl/FireExtinguisher.v2i.voc/Dataset/images/val
+test: /home/robot/wl/FireExtinguisher.v2i.voc/Dataset/images/test
+
+# number of classes
+nc: 1
+
+# class names
+names: ['extinguisher']

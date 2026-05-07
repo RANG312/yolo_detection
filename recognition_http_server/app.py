@@ -27,6 +27,10 @@ def main() -> None:
     logger.info("meter model loaded: %s", args.model)
     logger.info("fire model loaded: %s", args.fire_model)
     logger.info("safehat model loaded: %s", args.safehat_model)
+    logger.info("fire protection facilities model loaded: %s", args.fire_protection_facilities_model)
+    logger.info("person fall-down model loaded: %s", args.person_fall_down_model)
+    logger.info("fire extinguisher model loaded: %s", args.fire_extinguisher_model)
+    logger.info("person and cars model loaded: %s", args.person_and_cars_model)
     logger.info("meter annotation mode: %s", args.annotation_mode)
     logger.info("listening on http://%s:%s", args.host, args.port)
     try:

@@ -218,6 +218,8 @@ runs/train/meter_data_9k_yolov8m_2026*/
 
 # keep deployment models in git
 !runs/
+!runs/weights/
+!runs/weights/**
 !runs/train/
 !runs/train/best_fire.pt
 !runs/train/best_person.pt

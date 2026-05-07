@@ -1,0 +1,18 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+nc: 12
+names: ['air-outlet-not-stacking', 'air-outlet-stacking', 'evacuation-off', 'evacuation-on', 'evacuation-stacking', 'exit-off', 'exit-on', 'fire-door-close', 'fire-door-open', 'fire-door-stacking', 'fire-hydrant-not-stacking', 'fire-hydrant-stacking']
+
+#0：通风口无堵塞
+#1：通风口堵塞
+#2：疏散指示灯熄灭
+#3：疏散指示灯亮
+#4：疏散指示灯堵塞
+#5：出口指示灯熄灭
+#6：出口指示灯亮
+#7：防火门关
+#8：防火门开
+#9：防火门堵塞
+#10：消防器材无堵塞
+#11：消防器材堵塞

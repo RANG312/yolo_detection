@@ -10,7 +10,15 @@ import requests
 from ultralytics import YOLO
 
 from log_manager import GlobalLogManager
-from recognition_http_server.constants import TASK_KIND_FIRE, TASK_KIND_METER, TASK_KIND_SAFEHAT
+from recognition_http_server.constants import (
+    TASK_KIND_FIRE,
+    TASK_KIND_FIRE_EXTINGUISHER,
+    TASK_KIND_FIRE_PROTECTION_FACILITIES,
+    TASK_KIND_METER,
+    TASK_KIND_PERSON_AND_CARS,
+    TASK_KIND_PERSON_FALL_DOWN,
+    TASK_KIND_SAFEHAT,
+)
 from recognition_http_server.dial_reading import load_model
 from recognition_http_server.handlers.detection import run_detection_recognition
 from recognition_http_server.handlers.meter import run_digital_meter_recognition, run_pointer_meter_recognition
@@ -47,11 +55,22 @@ class RecognitionService:
         self.meter_model, self.config.annotation_mode = load_model(config.model)
         self.fire_model = YOLO(config.fire_model)
         self.safehat_model = YOLO(config.safehat_model)
+        self.fire_protection_facilities_model = YOLO(config.fire_protection_facilities_model)
+        self.person_fall_down_model = YOLO(config.person_fall_down_model)
+        self.fire_extinguisher_model = YOLO(config.fire_extinguisher_model)
+        self.person_and_cars_model = YOLO(config.person_and_cars_model)
         self.logger.info(
-            "models loaded: meter=%s fire=%s safehat=%s annotation_mode=%s",
+            (
+                "models loaded: meter=%s fire=%s safehat=%s fire_protection_facilities=%s "
+                "person_fall_down=%s fire_extinguisher=%s person_and_cars=%s annotation_mode=%s"
+            ),
             config.model,
             config.fire_model,
             config.safehat_model,
+            config.fire_protection_facilities_model,
+            config.person_fall_down_model,
+            config.fire_extinguisher_model,
+            config.person_and_cars_model,
             self.config.annotation_mode,
         )
         self._tasks: dict[str, TaskState] = {}
@@ -62,9 +81,47 @@ class RecognitionService:
     def _build_task_handlers(self) -> dict[str, TaskHandler]:
         """集中注册任务处理器，便于后续新增或删减检测类型。"""
         return {
-            TASK_KIND_METER: TaskHandler(TASK_KIND_METER, "meter", "表计读数", self._handle_meter_task),
-            TASK_KIND_FIRE: TaskHandler(TASK_KIND_FIRE, "fire", "火源检测", self._handle_fire_task),
-            TASK_KIND_SAFEHAT: TaskHandler(TASK_KIND_SAFEHAT, "safehat", "安全帽检测", self._handle_safehat_task),
+            TASK_KIND_METER: TaskHandler(
+                TASK_KIND_METER, 
+                "meter", "表计读数", 
+                self._handle_meter_task
+                ),
+            TASK_KIND_FIRE: TaskHandler(
+                TASK_KIND_FIRE,
+                  "fire",
+                    "火源检测",
+                      self._handle_fire_task
+                      ),
+            TASK_KIND_SAFEHAT: TaskHandler(
+                TASK_KIND_SAFEHAT,
+                  "safehat",
+                    "安全帽检测",
+                      self._handle_safehat_task
+                      ),
+            TASK_KIND_FIRE_PROTECTION_FACILITIES: TaskHandler(
+                TASK_KIND_FIRE_PROTECTION_FACILITIES,
+                "fire_protection_facilities",
+                "消防设施检测",
+                self._handle_fire_protection_facilities_task,
+            ),
+            TASK_KIND_PERSON_FALL_DOWN: TaskHandler(
+                TASK_KIND_PERSON_FALL_DOWN,
+                "person_fall_down",
+                "摔倒检测",
+                self._handle_person_fall_down_task,
+            ),
+            TASK_KIND_FIRE_EXTINGUISHER: TaskHandler(
+                TASK_KIND_FIRE_EXTINGUISHER,
+                "fire_extinguisher",
+                "灭火器检测",
+                self._handle_fire_extinguisher_task,
+            ),
+            TASK_KIND_PERSON_AND_CARS: TaskHandler(
+                TASK_KIND_PERSON_AND_CARS,
+                "person_and_cars",
+                "人车检测",
+                self._handle_person_and_cars_task,
+            ),
         }
 
     def create_task(self, payload: dict[str, Any], callback_host: str) -> TaskState:
@@ -133,7 +190,9 @@ class RecognitionService:
             )
             data_result = []
             for index, (image_path, data_type) in enumerate(zip(image_paths, image_data_types), start=1):
-                data_result.append(self._process_single_image(req_id, index, image_path, data_type, extra_info, debug_center))
+                data_result.append(
+                    self._process_single_image(req_id, index, image_path, data_type, extra_info, debug_center)
+                )
 
             callback_payload = {
                 "req_id": req_id,
@@ -167,7 +226,9 @@ class RecognitionService:
         debug_center: bool,
     ) -> dict[str, Any]:
         """处理单张图片，包括输入准备、handler 分发和结果组装。"""
-        local_image_path = prepare_image(self.logger, self.input_root, self.config.request_timeout, req_id, index, image_path)
+        local_image_path = prepare_image(
+            self.logger, self.input_root, self.config.request_timeout, req_id, index, image_path
+        )
         image_output_dir = self.output_root / req_id
         image_output_dir.mkdir(parents=True, exist_ok=True)
         task_kind = resolve_task_kind(data_type["recognize_type"])
@@ -261,7 +322,9 @@ class RecognitionService:
     ) -> list[dict[str, str]]:
         """复用通用检测链路处理火源检测任务。"""
         del extra_info, debug_center
-        return run_detection_recognition(self, local_image_path, self.fire_model, [data_type], visualize_path, "火源检测")
+        return run_detection_recognition(
+            self, local_image_path, self.fire_model, [data_type], visualize_path, "火源检测"
+        )
 
     def _handle_safehat_task(
         self,
@@ -273,7 +336,70 @@ class RecognitionService:
     ) -> list[dict[str, str]]:
         """复用通用检测链路处理安全帽检测任务。"""
         del extra_info, debug_center
-        return run_detection_recognition(self, local_image_path, self.safehat_model, [data_type], visualize_path, "安全帽检测")
+        return run_detection_recognition(
+            self, local_image_path, self.safehat_model, [data_type], visualize_path, "安全帽检测"
+        )
+
+    def _handle_fire_protection_facilities_task(
+        self,
+        local_image_path: Path,
+        data_type: dict[str, str],
+        visualize_path: Path,
+        extra_info: dict[str, Any],
+        debug_center: bool,
+    ) -> list[dict[str, str]]:
+        """复用通用检测链路处理消防设施检测任务。"""
+        del extra_info, debug_center
+        return run_detection_recognition(
+            self,
+            local_image_path,
+            self.fire_protection_facilities_model,
+            [data_type],
+            visualize_path,
+            "消防设施检测",
+        )
+
+    def _handle_person_fall_down_task(
+        self,
+        local_image_path: Path,
+        data_type: dict[str, str],
+        visualize_path: Path,
+        extra_info: dict[str, Any],
+        debug_center: bool,
+    ) -> list[dict[str, str]]:
+        """复用通用检测链路处理摔倒检测任务。"""
+        del extra_info, debug_center
+        return run_detection_recognition(
+            self, local_image_path, self.person_fall_down_model, [data_type], visualize_path, "摔倒检测"
+        )
+
+    def _handle_fire_extinguisher_task(
+        self,
+        local_image_path: Path,
+        data_type: dict[str, str],
+        visualize_path: Path,
+        extra_info: dict[str, Any],
+        debug_center: bool,
+    ) -> list[dict[str, str]]:
+        """复用通用检测链路处理灭火器检测任务。"""
+        del extra_info, debug_center
+        return run_detection_recognition(
+            self, local_image_path, self.fire_extinguisher_model, [data_type], visualize_path, "灭火器检测"
+        )
+
+    def _handle_person_and_cars_task(
+        self,
+        local_image_path: Path,
+        data_type: dict[str, str],
+        visualize_path: Path,
+        extra_info: dict[str, Any],
+        debug_center: bool,
+    ) -> list[dict[str, str]]:
+        """复用通用检测链路处理人车检测任务。"""
+        del extra_info, debug_center
+        return run_detection_recognition(
+            self, local_image_path, self.person_and_cars_model, [data_type], visualize_path, "人车检测"
+        )
 
     def _send_callback(self, req_id: str, callback_url: str, callback_payload: dict[str, Any]) -> None:
         """发送回调结果，并记录回调状态，但不回滚识别任务本身。"""
@@ -281,7 +407,9 @@ class RecognitionService:
             self.logger.info("sending callback: req_id=%s url=%s", req_id, callback_url)
             response = requests.post(callback_url, json=callback_payload, timeout=self.config.request_timeout)
             self._update_task(req_id, callback_status_code=response.status_code, callback_error=None)
-            self.logger.info("callback sent: req_id=%s url=%s status_code=%s", req_id, callback_url, response.status_code)
+            self.logger.info(
+                "callback sent: req_id=%s url=%s status_code=%s", req_id, callback_url, response.status_code
+            )
         except Exception as exc:
             self._update_task(req_id, callback_error=str(exc))
             self.logger.exception("callback failed: req_id=%s url=%s", req_id, callback_url)

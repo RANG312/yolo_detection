@@ -3,9 +3,17 @@ from __future__ import annotations
 from pathlib import Path
 
 # 默认参数配置
-DEFAULT_METER_MODEL_PATH = "runs/train/meter_data_9k_yolov8m_best/weights/best.pt"  # 指针表计读数权重路径
-DEFAULT_FIRE_MODEL_PATH = "runs/train/best_fire.pt"  # 火源检测权重路径
-DEFAULT_SAFEHAT_MODEL_PATH = "runs/train/best_person.pt"  # 安全帽检测权重路径
+DEFAULT_METER_MODEL_PATH = "runs/weights/1_dial_reading/best.pt"  # 指针表计读数权重路径
+DEFAULT_FIRE_MODEL_PATH = "runs/weights/6_fire_and_smoke/best_fire.pt"  # 火源检测权重路径
+DEFAULT_SAFEHAT_MODEL_PATH = "runs/weights/7_safe_hat/best_person.pt"  # 安全帽检测权重路径
+DEFAULT_FIRE_PROTECTION_FACILITIES_MODEL_PATH = (
+    "runs/weights/8_fire_protection_facilities/fire-fighting-facilitie_best.pt"
+)  # 消防设施检测权重路径
+DEFAULT_PERSON_FALL_DOWN_MODEL_PATH = "runs/weights/9_person_fall_down/fall_best.pt"  # 摔倒检测权重路径
+DEFAULT_FIRE_EXTINGUISHER_MODEL_PATH = (
+    "runs/weights/10_fire_extinguisher/extinguisher_best.pt"
+)  # 灭火器检测权重路径
+DEFAULT_PERSON_AND_CARS_MODEL_PATH = "runs/weights/11_person_and_cars/car_best.pt"  # 人车检测权重路径
 DEFAULT_MIN_VALUE = 0.0  # 指针读数任务表盘起始刻度
 DEFAULT_MAX_VALUE = 1.0  # 指针读数任务表盘末端刻度，默认设为 1（归一化）
 DEFAULT_IMGSZ = 640  # YOLO 模型处理图片分辨率
@@ -22,10 +30,18 @@ DEFAULT_LOG_DIR_NAME = "logs"
 RECOGNIZE_TYPE_METER = "1"  # 表计读数任务 recognize_type 键值
 RECOGNIZE_TYPE_FIRE = "6"  # 火源检测任务 recognize_type 键值
 RECOGNIZE_TYPE_SAFEHAT = "7"  # 安全帽识别任务 recognize_type 键值
+RECOGNIZE_TYPE_FIRE_PROTECTION_FACILITIES = "8"  # 消防设施检测任务 recognize_type 键值
+RECOGNIZE_TYPE_PERSON_FALL_DOWN = "9"  # 摔倒检测任务 recognize_type 键值
+RECOGNIZE_TYPE_FIRE_EXTINGUISHER = "10"  # 灭火器检测任务 recognize_type 键值
+RECOGNIZE_TYPE_PERSON_AND_CARS = "11"  # 人车检测任务 recognize_type 键值
 
 TASK_KIND_METER = "meter"
 TASK_KIND_FIRE = "fire"
 TASK_KIND_SAFEHAT = "safehat"
+TASK_KIND_FIRE_PROTECTION_FACILITIES = "fire_protection_facilities"
+TASK_KIND_PERSON_FALL_DOWN = "person_fall_down"
+TASK_KIND_FIRE_EXTINGUISHER = "fire_extinguisher"
+TASK_KIND_PERSON_AND_CARS = "person_and_cars"
 
 DEFAULT_DATA_TYPE = {"recognize_type": RECOGNIZE_TYPE_METER, "recognize_subtype": "default"}
 OCR_SUBTYPES = frozenset({"digital"})
@@ -38,4 +54,12 @@ RECOGNIZE_TYPE_ALIASES = {
     RECOGNIZE_TYPE_SAFEHAT: TASK_KIND_SAFEHAT,
     "safehat": TASK_KIND_SAFEHAT,
     "person": TASK_KIND_SAFEHAT,
+    RECOGNIZE_TYPE_FIRE_PROTECTION_FACILITIES: TASK_KIND_FIRE_PROTECTION_FACILITIES,
+    "fire_protection_facilities": TASK_KIND_FIRE_PROTECTION_FACILITIES,
+    RECOGNIZE_TYPE_PERSON_FALL_DOWN: TASK_KIND_PERSON_FALL_DOWN,
+    "person_fall_down": TASK_KIND_PERSON_FALL_DOWN,
+    RECOGNIZE_TYPE_FIRE_EXTINGUISHER: TASK_KIND_FIRE_EXTINGUISHER,
+    "fire_extinguisher": TASK_KIND_FIRE_EXTINGUISHER,
+    RECOGNIZE_TYPE_PERSON_AND_CARS: TASK_KIND_PERSON_AND_CARS,
+    "person_and_cars": TASK_KIND_PERSON_AND_CARS,
 }

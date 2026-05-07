@@ -42,5 +42,9 @@ class LoadedModels:
     meter_model: Any
     fire_model: Any
     safehat_model: Any
+    fire_protection_facilities_model: Any
+    person_fall_down_model: Any
+    fire_extinguisher_model: Any
+    person_and_cars_model: Any
     annotation_mode: str
     config: Namespace
