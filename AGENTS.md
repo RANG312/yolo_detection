@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-This repository targets NVIDIA Jetson Orin NX deployments and extends Ultralytics YOLO with custom dial-gauge reading, fire detection, and safety-helmet detection pipelines. Core library code lives in `ultralytics/`. The HTTP service is in `recognition_http_server/`; `server.py` is a compatibility entry point and should not grow new logic. Dial-reading compatibility code is in `dial_reading.py`, with the package implementation under `recognition_http_server/dial_reading/`. Training and export helpers live in `scripts/`. ROS2 integration lives under `ros2_recognition_service/`. Jetson deployment packages, including the packed conda environment, belong in `resources/`; runtime outputs/logs are written under `results/`.
+This repository targets NVIDIA Jetson Orin NX deployments and extends Ultralytics YOLO with custom dial-gauge reading and detection pipelines for fire/smoke, safety helmets, fire-protection facilities, fall-down events, fire extinguishers, and people/cars. Core library code lives in `ultralytics/`. The HTTP service is in `recognition_http_server/`; `server.py` is a compatibility entry point and should not grow new logic. Dial-reading compatibility code is in `dial_reading.py`, with the package implementation under `recognition_http_server/dial_reading/`. Training and export helpers live in `scripts/`. ROS2 integration lives under `ros2_recognition_service/`. Jetson deployment packages, including the packed conda environment, belong in `resources/`; runtime outputs/logs are written under `results/`.
 
 ## Architecture & Task Routing
 
@@ -13,6 +13,10 @@ The HTTP service uses a handler registry pattern for recognition tasks. Avoid ad
 | Dial meter reading | `"1"` | `meter` | `recognition_http_server/handlers/meter.py` |
 | Fire detection | `"6"` | `fire` | `recognition_http_server/handlers/detection.py` |
 | Safety helmet | `"7"` | `safehat` | `recognition_http_server/handlers/detection.py` |
+| Fire-protection facilities | `"8"` | `fire_protection_facilities` | `recognition_http_server/handlers/detection.py` |
+| Person fall-down | `"9"` | `person_fall_down` | `recognition_http_server/handlers/detection.py` |
+| Fire extinguisher | `"10"` | `fire_extinguisher` | `recognition_http_server/handlers/detection.py` |
+| People and cars | `"11"` | `person_and_cars` | `recognition_http_server/handlers/detection.py` |
 
 Key modules:
 
@@ -23,6 +27,8 @@ Key modules:
 - `recognition_http_server/dial_reading/pipeline.py`: pointer-meter inference pipeline.
 
 Pointer-meter reading runs YOLO detection on the full image, retries detection on a resized gauge crop for `meter_data_9k` models, assigns detected center/ticks/pointer elements, computes the reading geometrically, and saves an annotated visualization. Both `meter_data_9k` and `legacy` annotation protocols are supported through `infer_annotation_mode()`. A single-meter failure must not fail other meters on the same image.
+
+Deployment model weights that should be kept in git live under `runs/weights/<recognize_type>_<task_name>/`. The folder prefix is the external `recognize_type`; update `recognition_http_server/constants.py` when adding or moving default model paths.
 
 Local input paths are read directly. HTTP URLs are downloaded to `results/http_service/inputs/<req_id>/`; result images are saved to `results/http_service/outputs/<req_id>/`. For local inputs, a `-detection` result copy is also saved alongside the original image.
 
@@ -46,7 +52,7 @@ Use Python 3.8+ with 4-space indentation, 120-character lines, and Google-style 
 
 ## Testing Guidelines
 
-Prefer focused tests for changed behavior. Name test files `test_*.py` and functions `test_*`; keep unit tests under `tests/`. `pytest` runs unit tests with doctests through the project `pyproject.toml` settings. For HTTP changes, exercise `test_http.py` with representative `meter`, `fire`, and `safehat` requests when models are available. Keep generated payloads, logs, and visual outputs under `results/`.
+Prefer focused tests for changed behavior. Name test files `test_*.py` and functions `test_*`; keep unit tests under `tests/`. `pytest` runs unit tests with doctests through the project `pyproject.toml` settings. For HTTP changes, exercise `test_http.py` with representative requests when models are available, including explicit `--data-type` values `1`, `6`, `7`, `8`, `9`, `10`, and `11`. Keep generated payloads, logs, and visual outputs under `results/`.
 
 ## Jetson Deployment Notes
 
@@ -58,4 +64,4 @@ Recent commits use short imperative summaries such as `modify readme`, `add resu
 
 ## Security & Configuration Tips
 
-Do not commit model weights, generated datasets, credentials, or machine-specific paths. Model weights are gitignored except for the deployment models intentionally kept in `runs/train/`. Service defaults and task mappings are centralized in `recognition_http_server/constants.py`; update that file rather than duplicating configuration in handlers.
+Do not commit generated datasets, credentials, or machine-specific paths. Model weights are gitignored except for deployment models intentionally kept in `runs/weights/` and legacy deployment weights already whitelisted under `runs/train/`. Service defaults and task mappings are centralized in `recognition_http_server/constants.py`; update that file rather than duplicating configuration in handlers.

@@ -25,11 +25,15 @@
 
 ## 1. 总体说明
 
-当前服务支持 3 类识别任务：
+当前服务支持 7 类识别任务：
 
 - 表计读数
-- 火源检测
+- 火源/烟雾检测
 - 安全帽检测
+- 消防设施检测
+- 摔倒检测
+- 灭火器检测
+- 人车检测
 
 整体流程：
 
@@ -141,6 +145,10 @@ python recognition_http_server/app.py
 - `--model`：表计模型路径
 - `--fire-model`：火源检测模型路径
 - `--safehat-model`：安全帽检测模型路径
+- `--fire-protection-facilities-model`：消防设施检测模型路径
+- `--person-fall-down-model`：摔倒检测模型路径
+- `--fire-extinguisher-model`：灭火器检测模型路径
+- `--person-and-cars-model`：人车检测模型路径
 - `--imgsz`：推理尺寸
 - `--conf`：置信度阈值
 - `--device`：推理设备，例如 `cpu`、`0`
@@ -156,25 +164,30 @@ python recognition_http_server/app.py
 python server.py \
   --host 0.0.0.0 \
   --port 3208 \
-  --model runs/train/meter_data_9k_yolov8m_best/weights/best.pt \
-  --fire-model runs/train/best_fire.pt \
-  --safehat-model runs/train/best_person.pt \
+  --model runs/weights/1_dial_reading/best.pt \
+  --fire-model runs/weights/6_fire_and_smoke/best_fire.pt \
+  --safehat-model runs/weights/7_safe_hat/best_person.pt \
   --device 0
 ```
 
 ## 5. 当前模型加载
 
-服务启动时会一次性加载 3 个模型：
+服务启动时会一次性加载 7 个模型：
 
-- 表计模型：默认 `runs/train/meter_data_9k_yolov8m_best/weights/best.pt`
-- 火源模型：默认 `runs/train/best_fire.pt`
-- 安全帽模型：默认 `runs/train/best_person.pt`
+- 表计模型：默认 `runs/weights/1_dial_reading/best.pt`
+- 火源/烟雾模型：默认 `runs/weights/6_fire_and_smoke/best_fire.pt`
+- 安全帽模型：默认 `runs/weights/7_safe_hat/best_person.pt`
+- 消防设施模型：默认 `runs/weights/8_fire_protection_facilities/fire-fighting-facilitie_best.pt`
+- 摔倒模型：默认 `runs/weights/9_person_fall_down/fall_best.pt`
+- 灭火器模型：默认 `runs/weights/10_fire_extinguisher/extinguisher_best.pt`
+- 人车模型：默认 `runs/weights/11_person_and_cars/car_best.pt`
 
 说明：
 
+- `runs/weights/` 下目录名前缀对应外部请求的 `recognize_type`
 - 表计任务当前使用 [recognition_http_server/dial_reading/](/data/prj/yolov8_dial_reading/ultralytics/recognition_http_server/dial_reading) 子包完成关键点检测、实例分配和几何后处理
 - [dial_reading.py](/data/prj/yolov8_dial_reading/ultralytics/dial_reading.py) 只作为旧入口兼容层保留
-- 火源和安全帽任务走通用 YOLO 检测链路
+- 火源、安全帽、消防设施、摔倒、灭火器和人车任务走通用 YOLO 检测链路
 
 ## 6. 任务类型路由规则
 
@@ -183,8 +196,12 @@ python server.py \
 当前映射：
 
 - `1`：表计
-- `6`：火源检测
+- `6`：火源/烟雾检测
 - `7`：安全帽检测
+- `8`：消防设施检测
+- `9`：摔倒检测
+- `10`：灭火器检测
+- `11`：人车检测
 
 兼容别名：
 
@@ -192,6 +209,10 @@ python server.py \
 - `fire` -> `6`
 - `safehat` -> `7`
 - `person` -> `7`
+- `fire_protection_facilities` -> `8`
+- `person_fall_down` -> `9`
+- `fire_extinguisher` -> `10`
+- `person_and_cars` -> `11`
 
 内部路由：
 
@@ -203,6 +224,10 @@ python server.py \
 - `meter`
 - `fire`
 - `safehat`
+- `fire_protection_facilities`
+- `person_fall_down`
+- `fire_extinguisher`
+- `person_and_cars`
 
 这套结构的目的，是后续新增任务类型时不需要继续在主流程里堆 `if/elif`。
 
@@ -271,7 +296,7 @@ python server.py \
 
 ## 9. 纯检测任务当前行为
 
-火源检测和安全帽检测都复用通用检测执行器。
+火源/烟雾、安全帽、消防设施、摔倒、灭火器和人车检测都复用通用检测执行器。
 
 执行步骤：
 
@@ -387,6 +412,10 @@ results/http_service/outputs/<req_id>/
 - 表计：`*_result_meter.jpg`
 - 火源：`*_result_fire.jpg`
 - 安全帽：`*_result_safehat.jpg`
+- 消防设施：`*_result_fire_protection_facilities.jpg`
+- 摔倒：`*_result_person_fall_down.jpg`
+- 灭火器：`*_result_fire_extinguisher.jpg`
+- 人车：`*_result_person_and_cars.jpg`
 
 ## 13. 返回结构
 
@@ -527,16 +556,32 @@ python test_http.py \
 - `--data-type 1:digital`
 - `--data-type 6`
 - `--data-type 7`
+- `--data-type 8`
+- `--data-type 9`
+- `--data-type 10`
+- `--data-type 11`
 - `--data-type meter:default`
 - `--data-type fire`
 - `--data-type safehat`
+- `--data-type fire_protection_facilities`
+- `--data-type person_fall_down`
+- `--data-type fire_extinguisher`
+- `--data-type person_and_cars`
 
 第二种：拆分写法，显式使用 `--recognize-type` 和 `--recognize-subtype`
 
 - `--recognize-type 1 --recognize-subtype 25`
 - `--recognize-type 1 --recognize-subtype digital`
 - `--recognize-type 6`
+- `--recognize-type 8`
+- `--recognize-type 9`
+- `--recognize-type 10`
+- `--recognize-type 11`
 - `--recognize-type fire`
+- `--recognize-type fire_protection_facilities`
+- `--recognize-type person_fall_down`
+- `--recognize-type fire_extinguisher`
+- `--recognize-type person_and_cars`
 - `--recognize-type 1 --recognize-type 6 --recognize-subtype 25 --recognize-subtype ""`
 
 规则说明：
@@ -558,6 +603,8 @@ python test_http.py \
 - `meter`
 - `fire`
 - `safehat`
+
+说明：`test_http.py` 的 `--scene` 预设目前只覆盖以上三个常用场景；新增检测类型可以显式传 `--data-type 8`、`--data-type 9`、`--data-type 10` 或 `--data-type 11`。
 
 注意：
 
@@ -597,6 +644,42 @@ python test_http.py \
   --server http://127.0.0.1:3208 \
   --images /data/test/safehat.jpg \
   --data-type 7
+```
+
+消防设施检测：
+
+```bash
+python test_http.py \
+  --server http://127.0.0.1:3208 \
+  --images /data/test/fire_protection_facilities.jpg \
+  --data-type 8
+```
+
+摔倒检测：
+
+```bash
+python test_http.py \
+  --server http://127.0.0.1:3208 \
+  --images /data/test/fall.jpg \
+  --data-type 9
+```
+
+灭火器检测：
+
+```bash
+python test_http.py \
+  --server http://127.0.0.1:3208 \
+  --images /data/test/extinguisher.jpg \
+  --data-type 10
+```
+
+人车检测：
+
+```bash
+python test_http.py \
+  --server http://127.0.0.1:3208 \
+  --images /data/test/person_and_cars.jpg \
+  --data-type 11
 ```
 
 指针表读数：

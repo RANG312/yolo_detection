@@ -118,7 +118,7 @@ def parse_args() -> argparse.Namespace:
         "--data-type",
         action="append",
         default=[],
-        help="Recognition item in type[:subtype] format, e.g. 1:3, 6, 7. Can be repeated.",
+        help="Recognition item in type[:subtype] format, e.g. 1:3, 6, 7, 8, 9, 10, 11. Can be repeated.",
     )
     parser.add_argument(
         "--recognize-type",
@@ -163,6 +163,14 @@ def normalize_recognize_type(recognize_type: str) -> str:
         "7": "7",
         "safehat": "7",
         "person": "7",
+        "8": "8",
+        "fire_protection_facilities": "8",
+        "9": "9",
+        "person_fall_down": "9",
+        "10": "10",
+        "fire_extinguisher": "10",
+        "11": "11",
+        "person_and_cars": "11",
     }
     normalized = mapping.get(value.lower())
     if normalized is None:
