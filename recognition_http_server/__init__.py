@@ -1,4 +1,3 @@
-from recognition_http_server.app import main
 from recognition_http_server.config import parse_args
 from recognition_http_server.constants import (
     DEFAULT_CALLBACK_PATH,
@@ -54,9 +53,27 @@ from recognition_http_server.helpers import (
     resolve_task_kind,
     split_image_paths,
 )
-from recognition_http_server.http_api import RecognitionAPIServer, RecognitionHandler
 from recognition_http_server.schemas import MeterSubtypeResolution, TaskHandler, TaskState
-from recognition_http_server.service import RecognitionService
+
+
+def __getattr__(name: str):  # noqa: ANN202
+    if name == "main":
+        from recognition_http_server.app import main
+
+        return main
+    if name == "RecognitionAPIServer":
+        from recognition_http_server.http_api import RecognitionAPIServer
+
+        return RecognitionAPIServer
+    if name == "RecognitionHandler":
+        from recognition_http_server.http_api import RecognitionHandler
+
+        return RecognitionHandler
+    if name == "RecognitionService":
+        from recognition_http_server.service import RecognitionService
+
+        return RecognitionService
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 __all__ = [
     "DEFAULT_CALLBACK_PATH",

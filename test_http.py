@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import errno
 import json
 import os
 import threading
@@ -322,7 +323,11 @@ def resolve_image_paths(args: argparse.Namespace) -> list[str]:
 def read_initial_hikvision_position(args: argparse.Namespace):  # noqa: ANN201
     if not args.hik_capture or args.no_hik_restore:
         return None
-    position = create_hikvision_controller(args).read_position()
+    try:
+        position = create_hikvision_controller(args).read_position()
+    except Exception as exc:  # noqa: BLE001
+        print(f"WARNING: failed to read initial Hikvision PTZ position; restore will be skipped: {exc}")
+        return None
     print(
         "Initial Hikvision PTZ position: "
         f"pan={position.pan_deg:.3f} tilt={position.tilt_deg:.3f} zoom={position.zoom_deg:.3f}"
@@ -365,7 +370,14 @@ def build_request_payload(args: argparse.Namespace, callback_url: str) -> dict[s
 
 
 def start_callback_server(args: argparse.Namespace, state: CallbackState) -> CallbackServer:
-    server = CallbackServer((args.callback_host, args.callback_port), CallbackHandler, state, args.callback_path)
+    try:
+        server = CallbackServer((args.callback_host, args.callback_port), CallbackHandler, state, args.callback_path)
+    except OSError as exc:
+        if exc.errno != errno.EADDRINUSE or args.callback_port == 0:
+            raise
+        print(f"WARNING: callback port {args.callback_port} is in use; binding an ephemeral port instead.")
+        server = CallbackServer((args.callback_host, 0), CallbackHandler, state, args.callback_path)
+    args.callback_port = int(server.server_address[1])
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     print(f"Callback server listening on http://{args.callback_host}:{args.callback_port}{args.callback_path}")
@@ -451,13 +463,13 @@ def print_callback_summary(payload: dict[str, Any]) -> None:
 def main() -> None:
     args = parse_args()
     state = CallbackState()
-    callback_url = build_callback_url(args)
     initial_hikvision_position = read_initial_hikvision_position(args)
     callback_server = None
 
     try:
-        payload = build_request_payload(args, callback_url)
         callback_server = start_callback_server(args, state)
+        callback_url = build_callback_url(args)
+        payload = build_request_payload(args, callback_url)
         submit_response = post_task(args.server, payload)
         req_id = submit_response.get("req_id", payload["req_id"])
         deadline = time.time() + args.timeout

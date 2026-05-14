@@ -118,12 +118,17 @@ def predict_image_instances(
                 break
             ptz_alignment_config = _refresh_ptz_fov(args, ptz_alignment_config)
             ptz_controller = getattr(args, "ptz_controller", ptz_controller)
-            ptz_request = maybe_align_gauge(
-                ptz_controller,
-                ptz_alignment_config,
-                image.shape,
-                gauge_box,
-            )
+            try:
+                ptz_request = maybe_align_gauge(
+                    ptz_controller,
+                    ptz_alignment_config,
+                    image.shape,
+                    gauge_box,
+                )
+            except Exception as exc:  # noqa: BLE001
+                if ptz_logger is not None:
+                    ptz_logger.exception("meter ptz alignment skipped after sdk error: %s", exc)
+                break
             if ptz_request is not None and ptz_logger is not None:
                 ptz_logger.info(
                     (
@@ -164,12 +169,17 @@ def predict_image_instances(
         if ptz_alignment_config is not None:
             max_zoom_passes = max(0, int(getattr(ptz_alignment_config, "zoom_max_passes", 0)))
             for zoom_pass in range(1, max_zoom_passes + 1):
-                ptz_zoom_request = maybe_zoom_gauge(
-                    ptz_controller,
-                    ptz_alignment_config,
-                    image.shape,
-                    gauge_box,
-                )
+                try:
+                    ptz_zoom_request = maybe_zoom_gauge(
+                        ptz_controller,
+                        ptz_alignment_config,
+                        image.shape,
+                        gauge_box,
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    if ptz_logger is not None:
+                        ptz_logger.exception("meter ptz zoom skipped after sdk error: %s", exc)
+                    break
                 if ptz_zoom_request is not None and ptz_logger is not None:
                     ptz_logger.info(
                         (

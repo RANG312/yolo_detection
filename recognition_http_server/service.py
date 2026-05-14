@@ -42,6 +42,13 @@ from recognition_http_server.schemas import TaskHandler, TaskState
 from recognition_http_server.utils.image_io import prepare_image
 
 
+def resolve_task_callback_url(extra_info: dict[str, Any], callback_host: str, callback_port: int) -> str:
+    callback_url = str(extra_info.get("callback_url", "")).strip()
+    if callback_url:
+        return callback_url
+    return build_callback_url(callback_host, callback_port)
+
+
 class RecognitionService:
     """识别服务的核心编排层，负责模型加载、任务状态和任务调度。"""
 
@@ -233,7 +240,7 @@ class RecognitionService:
         data_types = normalize_data_types(payload.get("data_type"))
         image_data_types = align_data_types_to_images(image_paths, data_types)
         extra_info = parse_extra_info(payload.get("extra_info", ""))
-        callback_url = build_callback_url(task.callback_host, self.config.callback_port)
+        callback_url = resolve_task_callback_url(extra_info, task.callback_host, self.config.callback_port)
         debug_center = bool(extra_info.get("debug_center", False))
 
         try:

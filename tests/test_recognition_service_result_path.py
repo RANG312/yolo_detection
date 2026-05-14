@@ -9,7 +9,18 @@ ultralytics_stub = types.ModuleType("ultralytics")
 ultralytics_stub.YOLO = object
 sys.modules.setdefault("ultralytics", ultralytics_stub)
 
-from recognition_http_server.service import RecognitionService, TaskHandler
+from recognition_http_server.service import RecognitionService, TaskHandler, resolve_task_callback_url
+
+
+def test_task_callback_url_prefers_request_extra_info_callback_url() -> None:
+    assert (
+        resolve_task_callback_url({"callback_url": "http://127.0.0.1:4567/callback"}, "10.0.0.1", 8088)
+        == "http://127.0.0.1:4567/callback"
+    )
+
+
+def test_task_callback_url_falls_back_to_task_host_and_configured_port() -> None:
+    assert resolve_task_callback_url({}, "10.0.0.1", 8088) == "http://10.0.0.1:8088/api/v1/recognition/callback"
 
 
 def test_failed_recognition_copies_image_path_to_result_path(tmp_path: Path) -> None:
