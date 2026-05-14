@@ -17,6 +17,7 @@
 - 修改参数： ` recognition_http_server/constants.py ` 
 
 ### ROS2 humble
+- 功能暂不完全，暂无需求
 - 先运行 ``` bash ros2_recognition_service/deploy_ros2_ws.sh``` 构建ros2工作区并编译
 - 再运行 ``` source ./ros2_recognition_service/source_ros2_ws.bash ```
 - 接着ros2 launch 节点 ``` bash ros2_recognition_service/launch_recognition_service.sh ```
@@ -157,6 +158,15 @@ python recognition_http_server/app.py
 - `--result-root`：结果目录，默认 `results/http_service`
 - `--callback-port`：回调端口，默认 `8088`
 - `--request-timeout`：图片下载和回调超时时间
+- `--ptz-align-enabled`：启用海康云台自动对齐，仅作用于指针表计任务
+- `--ptz-host` / `--ptz-port` / `--ptz-username` / `--ptz-password` / `--ptz-channel`：海康设备连接参数
+- `--ptz-horizontal-fov-deg` / `--ptz-vertical-fov-deg`：手工视场角兜底值；服务端启用 PTZ 后会在每次指针表识别前优先通过海康 SDK 读取当前 FOV
+- `--ptz-align-threshold-deg`：pan/tilt 偏移小于该阈值时不移动云台
+- `--ptz-align-max-delta-deg`：单次 pan/tilt 修正的最大角度
+- `--ptz-align-max-passes`：最多执行几轮“检测 gauge -> 调整云台 -> 重新抓图”
+- `--ptz-nudge-*`：云台连续控制参数，用于把角度修正换算成 SDK start/stop 控制时长
+- `--ptz-zoom-enabled` / `--no-ptz-zoom-enabled`：启用或关闭对齐后的光学变焦调整，默认启用
+- `--ptz-zoom-*`：光学变焦目标比例、容差、轮次和控制时长参数
 
 示例：
 
@@ -282,7 +292,85 @@ python server.py \
 识别成功，表计#1归一化读数=0.472000，量程=25.000000，最终读数=11.800000，arc_mode=...
 ```
 
-### 8.2 数码表
+### 8.2 指针表 PTZ 自动对齐与抓图
+
+指针表计可以选择接入海康云台自动对齐。该能力只对表计任务中的指针表链路生效，不影响数码表、火源、安全帽、消防设施、摔倒、灭火器和人车检测任务。
+
+启用方式：
+
+```bash
+python server.py \
+  --ptz-align-enabled \
+  --ptz-host 192.168.1.64 \
+  --ptz-username admin \
+  --ptz-password '<password>' \
+  --ptz-channel 1
+```
+
+环境变量也可以提供部分海康连接参数：
+
+- `HIK_HOST`
+- `HIK_USERNAME`
+- `HIK_PASSWORD`
+- `HIK_LOCAL_IP`
+
+完整流程：
+
+1. 后端请求里可以在 `extra_info` 中携带当前云台状态，例如 `pan`、`tilt`、`zoom`。
+2. 当前算法端不会使用这些状态值作为控制依据，只通过海康 SDK 读取和控制实际设备。
+3. 服务先对输入图片做第一阶段 YOLO 推理，检测 `gauge`。
+4. 服务通过海康 SDK 读取当前 FOV，选取置信度最高的 `gauge`，根据表盘中心相对画面中心的偏移计算 pan/tilt 修正量。
+5. 如果偏移超过 `--ptz-align-threshold-deg`，通过 `HikvisionPTZController` 调用海康 SDK 控制云台。
+6. 云台稳定后重新抓图，保存为 `*_align_1.jpg`、`*_align_2.jpg` 等，再重新检测 `gauge`。
+7. pan/tilt 对齐结束后，如果启用 zoom，会根据表盘高度占画面高度的比例决定 zoom in 或 zoom out。
+8. zoom 后重新抓图，保存为 `*_zoom_1.jpg`、`*_zoom_2.jpg` 等，再重新检测 `gauge`。
+9. 最终对齐后的抓拍图保存为 `*_aligned`，后续指针读数基于这张最终图继续执行。
+10. 最终图中的 `gauge` 会被裁剪并 resize 到 640x640，再进行第二阶段关键点检测和几何读数。
+
+中间抓图保存位置：
+
+```text
+results/http_service/outputs/<req_id>/<stem>_align_1.jpg
+results/http_service/outputs/<req_id>/<stem>_align_2.jpg
+results/http_service/outputs/<req_id>/<stem>_zoom_1.jpg
+```
+
+最终对齐抓拍图保存规则：
+
+- 本地输入：写到请求 `image_path` 同目录，在扩展名前追加 `_aligned`
+- HTTP/HTTPS URL 输入：无法写回远端，写到 `results/http_service/outputs/<req_id>/`
+
+示例：
+
+```text
+/data/test/meter.jpg
+/data/test/meter_aligned.jpg
+```
+
+HTTP 服务返回规则：
+
+- 指针表识别成功且 `_aligned` 文件存在时，`data_result[].image_path` 返回最终对齐抓拍图路径
+- `data_result[].image_path_result` 返回最终结果图路径
+- 本地输入成功时，结果图仍会额外复制为原图同目录的 `*-detection.jpg`
+- 识别失败时，`image_path` 和 `image_path_result` 都保持原请求路径
+
+相关实现入口：
+
+- `recognition_http_server/service.py`：创建 `PTZAlignmentConfig` 和 `HikvisionPTZController`，并为 meter handler 注入抓图保存路径
+- `recognition_http_server/hikvision_ptz.py`：海康 SDK 登录、读取 PTZ/FOV、pan/tilt/zoom 控制和 HTTP 抓图
+- `recognition_http_server/ptz_alignment.py`：像素偏移到 pan/tilt 角度、表盘高度到 zoom 请求的计算
+- `recognition_http_server/dial_reading/pipeline.py`：在 `meter_data_9k` 指针表流程中执行对齐、变焦、抓图保存和最终读数
+- `scripts/test_hikvision_ptz_alignment.py`：独立现场验证脚本，可用于不启动 HTTP 服务时验证云台对齐效果
+
+维护注意：
+
+- 后续调整云台控制优先改 `recognition_http_server/hikvision_ptz.py` 和 `recognition_http_server/ptz_alignment.py`
+- 后续调整表计读数优先改 `recognition_http_server/dial_reading/`
+- 不要在 `service.py` 里继续增加新的任务 `if/elif` 分支，新增任务应走 handler 注册表
+- PTZ 对齐依赖 `meter_data_9k` 模型先检测到 `gauge`；找不到 `gauge` 会导致该图表计任务失败
+- 单张图内某个表盘几何读数失败会下沉到该表盘实例，不会主动让其他表盘失败
+
+### 8.3 数码表
 
 数码表链路目前只完成了服务端骨架，尚未真正接入 ROI 检测和 OCR。
 
@@ -417,6 +505,11 @@ results/http_service/outputs/<req_id>/
 - 灭火器：`*_result_fire_extinguisher.jpg`
 - 人车：`*_result_person_and_cars.jpg`
 
+指针表 PTZ 对齐额外文件：
+
+- 中间抓图：`*_align_1.jpg`、`*_align_2.jpg`、`*_zoom_1.jpg`
+- 最终对齐抓拍图：本地输入为原图同目录 `*_aligned.<ext>`；URL 输入为 `results/http_service/outputs/<req_id>/*_aligned.jpg`
+
 ## 13. 返回结构
 
 回调返回顶层结构示例：
@@ -456,6 +549,10 @@ results/http_service/outputs/<req_id>/
 - `recognize_desc`
 
 字段语义：
+
+- `image_path`
+  - 普通任务：原请求图片路径
+  - 指针表 PTZ 对齐成功：最终 `_aligned` 抓拍图路径
 
 - `recognize_image_index`
   - 表计：第几个表计实例
@@ -530,6 +627,17 @@ python test_http.py \
   --recognize-subtype 25
 ```
 
+如果现场想直接从海康摄像机抓一张图再提交识别，可以使用：
+
+```bash
+python test_http.py \
+  --server http://127.0.0.1:3208 \
+  --hik-capture \
+  --hik-host 192.168.1.64 \
+  --hik-password '<password>' \
+  --data-type 1:25
+```
+
 ### 15.2 常用参数
 
 - `--server`：识别服务地址，默认 `http://127.0.0.1:3208`
@@ -544,6 +652,19 @@ python test_http.py \
 - `--debug-center`
 - `--timeout`
 - `--output`
+- `--hik-capture`：先从海康摄像机抓图，再把抓到的本地图片作为 `image_path` 提交
+- `--hik-host` / `--hik-port` / `--hik-username` / `--hik-password` / `--hik-channel`：海康抓图连接参数
+- `--hik-output-dir`：抓图保存目录，默认 `results/http_service/hikvision_captures`
+- `--hik-snapshot-name`：抓图文件名；不传时自动生成 `hik_YYYYmmdd_HHMMSS.jpg`
+- `--hik-restore-delay`：测试结束后等待多少秒再回退到初始 PTZ 位置，默认 `10`
+- `--no-hik-restore`：关闭测试结束后的 PTZ 自动回退
+
+说明：
+
+- 不使用 `--hik-capture` 时，`--images` 仍然必填
+- 使用 `--hik-capture` 时，脚本会忽略手工传入的 `--images`，只提交当前抓到的那一张图
+- 使用 `--hik-capture` 时，脚本会在提交任务前记录初始 pan/tilt/zoom，回调处理完成后默认等待 10 秒并恢复到初始位置
+- `--hik-host`、`--hik-username`、`--hik-password` 可分别通过 `HIK_HOST`、`HIK_USERNAME`、`HIK_PASSWORD` 环境变量提供
 
 ### 15.3 参数传法说明
 

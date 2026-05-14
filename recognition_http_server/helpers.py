@@ -82,6 +82,25 @@ def build_detection_result_path(image_path: str) -> Path | None:
     return resolved_path.with_name(f"{resolved_path.name}-detection")
 
 
+def build_aligned_image_path(image_path: str, fallback_dir: Path, fallback_stem: str) -> Path:
+    """
+    基于请求里的原图路径生成最终 PTZ 对齐抓拍图路径。
+
+    本地文件写回原图同级目录；HTTP/HTTPS URL 无法写回远端，退回本次
+    任务的结果目录。
+    """
+    if is_http_url(image_path):
+        return fallback_dir / f"{fallback_stem}_aligned.jpg"
+
+    resolved_path = Path(image_path).expanduser()
+    if not resolved_path.is_absolute():
+        resolved_path = Path.cwd() / resolved_path
+
+    if resolved_path.suffix:
+        return resolved_path.with_name(f"{resolved_path.stem}_aligned{resolved_path.suffix}")
+    return resolved_path.with_name(f"{resolved_path.name}_aligned.jpg")
+
+
 def build_callback_url(callback_host: str, callback_port: int) -> str:
     """根据回调主机和配置端口拼接完整回调地址。"""
     return f"http://{callback_host}:{callback_port}{DEFAULT_CALLBACK_PATH}"

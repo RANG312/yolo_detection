@@ -16,9 +16,9 @@ from recognition_http_server.dial_reading.detections import (
     collect_best_detections,
     ensure_retry_gauge_detection,
     resize_gauge_crop_for_retry,
-    sort_boxes_reading_order,
 )
 from recognition_http_server.dial_reading.geometry import compute_reading_from_detection_instance
+from recognition_http_server.ptz_alignment import maybe_align_gauge, maybe_zoom_gauge
 from recognition_http_server.dial_reading.visualization import draw_box, draw_point
 
 # 表计推理主流程：负责模型加载、YOLO 推理、检测结果转实例、几何读数和可视化。
@@ -44,6 +44,37 @@ def load_model(model_path: str) -> tuple[YOLO, str]:
     return model, annotation_mode
 
 
+def _save_ptz_capture(args: argparse.Namespace, image: np.ndarray, label: str, index: int) -> None:
+    capture_dir = getattr(args, "ptz_capture_dir", None)
+    if capture_dir is None:
+        return
+    capture_stem = str(getattr(args, "ptz_capture_stem", "meter"))
+    capture_path = Path(capture_dir) / f"{capture_stem}_{label}_{index}.jpg"
+    capture_path.parent.mkdir(parents=True, exist_ok=True)
+    cv2.imwrite(str(capture_path), image)
+
+
+def _save_aligned_capture(args: argparse.Namespace, image: np.ndarray) -> None:
+    aligned_path = getattr(args, "ptz_aligned_image_path", None)
+    if aligned_path is None:
+        return
+    aligned_path = Path(aligned_path)
+    aligned_path.parent.mkdir(parents=True, exist_ok=True)
+    cv2.imwrite(str(aligned_path), image)
+
+
+def _refresh_ptz_fov(args: argparse.Namespace, config):  # noqa: ANN001, ANN202
+    provider = getattr(args, "ptz_fov_provider", None)
+    if provider is None or config is None or not getattr(config, "enabled", False):
+        return config
+    resolved = provider(config)
+    if isinstance(resolved, tuple):
+        refreshed_config, refreshed_controller = resolved
+        args.ptz_controller = refreshed_controller
+        return refreshed_config
+    return resolved
+
+
 def predict_image_instances(
     image_path: Path, model: YOLO, args: argparse.Namespace, annotation_mode: str
 ) -> tuple[np.ndarray, list[dict[str, Any]], float, float]:
@@ -65,18 +96,116 @@ def predict_image_instances(
 
     if annotation_mode == "meter_data_9k":
         # 第一阶段只信任 gauge 定位；细粒度点位由裁剪后的第二阶段重新检测。
-        gauge_detections = detections.get("gauge", [])
-        if not gauge_detections:
-            raise ValueError("Missing required detections: ['gauge']")
+        ptz_alignment_config = getattr(args, "ptz_alignment_config", None)
+        ptz_controller = getattr(args, "ptz_controller", None)
+        ptz_logger = getattr(args, "ptz_logger", None)
+        ptz_enabled = bool(getattr(ptz_alignment_config, "enabled", False)) if ptz_alignment_config is not None else False
+        max_alignment_passes = 1
+        if ptz_alignment_config is not None:
+            max_alignment_passes = max(1, int(getattr(ptz_alignment_config, "max_passes", 1)))
 
-        sorted_gauge_boxes = sort_boxes_reading_order([item["box"] for item in gauge_detections])
-        gauge_box = sorted_gauge_boxes[0]
-        gauge_detection = next(
-            item
-            for item in gauge_detections
-            if tuple(np.asarray(item["box"], dtype=np.float64).tolist())
-            == tuple(np.asarray(gauge_box, dtype=np.float64).tolist())
-        )
+        for alignment_pass in range(1, max_alignment_passes + 1):
+            gauge_detections = detections.get("gauge", [])
+            if not gauge_detections:
+                raise ValueError("Missing required detections: ['gauge']")
+
+            gauge_detection = max(
+                gauge_detections,
+                key=lambda item: float(item["conf"]),
+            )
+            gauge_box = np.asarray(gauge_detection["box"], dtype=np.float64)
+            if ptz_alignment_config is None:
+                break
+            ptz_alignment_config = _refresh_ptz_fov(args, ptz_alignment_config)
+            ptz_controller = getattr(args, "ptz_controller", ptz_controller)
+            ptz_request = maybe_align_gauge(
+                ptz_controller,
+                ptz_alignment_config,
+                image.shape,
+                gauge_box,
+            )
+            if ptz_request is not None and ptz_logger is not None:
+                ptz_logger.info(
+                    (
+                        "meter ptz alignment checked: pass=%s should_align=%s dx_px=%.3f dy_px=%.3f "
+                        "pan_delta=%.3f tilt_delta=%.3f hfov=%.3f vfov=%.3f gauge_box=%s"
+                    ),
+                    alignment_pass,
+                    ptz_request.should_align,
+                    ptz_request.dx_px,
+                    ptz_request.dy_px,
+                    ptz_request.pan_delta_deg,
+                    ptz_request.tilt_delta_deg,
+                    ptz_alignment_config.horizontal_fov_deg,
+                    ptz_alignment_config.vertical_fov_deg,
+                    ptz_request.gauge_box,
+                )
+            if ptz_request is None or not ptz_request.should_align:
+                break
+            if ptz_controller is None or not hasattr(ptz_controller, "capture_image"):
+                break
+            image = ptz_controller.capture_image()
+            _save_ptz_capture(args, image, "align", alignment_pass)
+            inference_start = time.perf_counter()
+            results = model.predict(source=image, imgsz=args.imgsz, conf=args.conf, device=args.device, verbose=False)
+            inference_time += time.perf_counter() - inference_start
+            detections = collect_all_detections(results[0])
+            gauge_detections = detections.get("gauge", [])
+            if not gauge_detections:
+                raise ValueError("Missing required detections: ['gauge']")
+            gauge_detection = max(
+                gauge_detections,
+                key=lambda item: float(item["conf"]),
+            )
+            gauge_box = np.asarray(gauge_detection["box"], dtype=np.float64)
+            if alignment_pass >= max_alignment_passes:
+                break
+
+        if ptz_alignment_config is not None:
+            max_zoom_passes = max(0, int(getattr(ptz_alignment_config, "zoom_max_passes", 0)))
+            for zoom_pass in range(1, max_zoom_passes + 1):
+                ptz_zoom_request = maybe_zoom_gauge(
+                    ptz_controller,
+                    ptz_alignment_config,
+                    image.shape,
+                    gauge_box,
+                )
+                if ptz_zoom_request is not None and ptz_logger is not None:
+                    ptz_logger.info(
+                        (
+                            "meter ptz zoom checked: pass=%s should_zoom=%s direction=%s "
+                            "height_ratio=%.3f target=%.3f tolerance=%.3f gauge_box=%s"
+                        ),
+                        zoom_pass,
+                        ptz_zoom_request.should_zoom,
+                        ptz_zoom_request.zoom_direction,
+                        ptz_zoom_request.current_height_ratio,
+                        ptz_zoom_request.target_height_ratio,
+                        ptz_zoom_request.ratio_tolerance,
+                        ptz_zoom_request.gauge_box,
+                    )
+                if ptz_zoom_request is None or not ptz_zoom_request.should_zoom:
+                    break
+                if ptz_controller is None or not hasattr(ptz_controller, "capture_image"):
+                    break
+                image = ptz_controller.capture_image()
+                _save_ptz_capture(args, image, "zoom", zoom_pass)
+                inference_start = time.perf_counter()
+                results = model.predict(source=image, imgsz=args.imgsz, conf=args.conf, device=args.device, verbose=False)
+                inference_time += time.perf_counter() - inference_start
+                detections = collect_all_detections(results[0])
+                gauge_detections = detections.get("gauge", [])
+                if not gauge_detections:
+                    raise ValueError("Missing required detections: ['gauge']")
+                gauge_detection = max(
+                    gauge_detections,
+                    key=lambda item: float(item["conf"]),
+                )
+                gauge_box = np.asarray(gauge_detection["box"], dtype=np.float64)
+
+        if ptz_enabled:
+            _save_aligned_capture(args, image)
+
         retry_image = resize_gauge_crop_for_retry(image, gauge_box)
 
         retry_start = time.perf_counter()

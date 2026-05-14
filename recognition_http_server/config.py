@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 
 from recognition_http_server.constants import (
     DEFAULT_CALLBACK_PORT,
@@ -16,6 +17,34 @@ from recognition_http_server.constants import (
     DEFAULT_MIN_VALUE,
     DEFAULT_PERSON_AND_CARS_MODEL_PATH,
     DEFAULT_PERSON_FALL_DOWN_MODEL_PATH,
+    DEFAULT_PTZ_ALIGN_ENABLED,
+    DEFAULT_PTZ_ALIGN_MAX_DELTA_DEG,
+    DEFAULT_PTZ_ALIGN_MAX_PASSES,
+    DEFAULT_PTZ_ALIGN_THRESHOLD_DEG,
+    DEFAULT_PTZ_CHANNEL,
+    DEFAULT_PTZ_HOST,
+    DEFAULT_PTZ_HORIZONTAL_FOV_DEG,
+    DEFAULT_PTZ_PASSWORD,
+    DEFAULT_PTZ_PORT,
+    DEFAULT_PTZ_SETTLE_SECONDS,
+    DEFAULT_PTZ_TILT_MAX_DEG,
+    DEFAULT_PTZ_TILT_MIN_DEG,
+    DEFAULT_PTZ_NUDGE_DEGREES_PER_SECOND,
+    DEFAULT_PTZ_NUDGE_MAX_SECONDS,
+    DEFAULT_PTZ_NUDGE_MAX_STEPS,
+    DEFAULT_PTZ_NUDGE_MIN_SECONDS,
+    DEFAULT_PTZ_NUDGE_SPEED,
+    DEFAULT_PTZ_TILT_NUDGE_SCALE,
+    DEFAULT_PTZ_USERNAME,
+    DEFAULT_PTZ_VERTICAL_FOV_DEG,
+    DEFAULT_PTZ_ZOOM_ENABLED,
+    DEFAULT_PTZ_ZOOM_FOCUS_TIMEOUT,
+    DEFAULT_PTZ_ZOOM_MAX_PASSES,
+    DEFAULT_PTZ_ZOOM_NUDGE_SECONDS,
+    DEFAULT_PTZ_ZOOM_NUDGE_SPEED,
+    DEFAULT_PTZ_ZOOM_NUDGE_STEPS,
+    DEFAULT_PTZ_ZOOM_RATIO_TOLERANCE,
+    DEFAULT_PTZ_ZOOM_TARGET_HEIGHT_RATIO,
     DEFAULT_PORT,
     DEFAULT_REQUEST_TIMEOUT,
     DEFAULT_RESULT_ROOT,
@@ -72,4 +101,51 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_REQUEST_TIMEOUT,
         help="HTTP download/callback timeout in seconds.",
     )
+    parser.add_argument(
+        "--ptz-align-enabled",
+        action="store_true",
+        default=DEFAULT_PTZ_ALIGN_ENABLED,
+        help="Enable Hikvision PTZ auto-alignment before pointer meter ROI retry.",
+    )
+    parser.add_argument("--ptz-host", default=os.environ.get("HIK_HOST", DEFAULT_PTZ_HOST), help="Hikvision device host.")
+    parser.add_argument("--ptz-port", type=int, default=DEFAULT_PTZ_PORT, help="Hikvision SDK port.")
+    parser.add_argument("--ptz-username", default=os.environ.get("HIK_USERNAME", DEFAULT_PTZ_USERNAME))
+    parser.add_argument("--ptz-password", default=os.environ.get("HIK_PASSWORD", DEFAULT_PTZ_PASSWORD))
+    parser.add_argument("--ptz-channel", type=int, default=DEFAULT_PTZ_CHANNEL)
+    parser.add_argument("--ptz-local-ip", default=os.environ.get("HIK_LOCAL_IP", ""))
+    parser.add_argument("--ptz-horizontal-fov-deg", type=float, default=DEFAULT_PTZ_HORIZONTAL_FOV_DEG)
+    parser.add_argument("--ptz-vertical-fov-deg", type=float, default=DEFAULT_PTZ_VERTICAL_FOV_DEG)
+    parser.add_argument("--ptz-align-threshold-deg", type=float, default=DEFAULT_PTZ_ALIGN_THRESHOLD_DEG)
+    parser.add_argument("--ptz-align-max-delta-deg", type=float, default=DEFAULT_PTZ_ALIGN_MAX_DELTA_DEG)
+    parser.add_argument("--ptz-align-max-passes", type=int, default=DEFAULT_PTZ_ALIGN_MAX_PASSES)
+    parser.add_argument("--ptz-tilt-min-deg", type=float, default=DEFAULT_PTZ_TILT_MIN_DEG)
+    parser.add_argument("--ptz-tilt-max-deg", type=float, default=DEFAULT_PTZ_TILT_MAX_DEG)
+    parser.add_argument("--ptz-settle-seconds", type=float, default=DEFAULT_PTZ_SETTLE_SECONDS)
+    parser.add_argument("--ptz-nudge-speed", type=int, default=DEFAULT_PTZ_NUDGE_SPEED)
+    parser.add_argument("--ptz-nudge-degrees-per-second", type=float, default=DEFAULT_PTZ_NUDGE_DEGREES_PER_SECOND)
+    parser.add_argument("--ptz-nudge-min-seconds", type=float, default=DEFAULT_PTZ_NUDGE_MIN_SECONDS)
+    parser.add_argument("--ptz-nudge-max-seconds", type=float, default=DEFAULT_PTZ_NUDGE_MAX_SECONDS)
+    parser.add_argument("--ptz-nudge-max-steps", type=int, default=DEFAULT_PTZ_NUDGE_MAX_STEPS)
+    parser.add_argument("--ptz-tilt-nudge-scale", type=float, default=DEFAULT_PTZ_TILT_NUDGE_SCALE)
+    zoom_group = parser.add_mutually_exclusive_group()
+    zoom_group.add_argument(
+        "--ptz-zoom-enabled",
+        dest="ptz_zoom_enabled",
+        action="store_true",
+        help="Enable optical zoom adjustment after PTZ pan/tilt alignment.",
+    )
+    zoom_group.add_argument(
+        "--no-ptz-zoom-enabled",
+        dest="ptz_zoom_enabled",
+        action="store_false",
+        help="Disable optical zoom adjustment after PTZ pan/tilt alignment.",
+    )
+    parser.set_defaults(ptz_zoom_enabled=DEFAULT_PTZ_ZOOM_ENABLED)
+    parser.add_argument("--ptz-zoom-target-height-ratio", type=float, default=DEFAULT_PTZ_ZOOM_TARGET_HEIGHT_RATIO)
+    parser.add_argument("--ptz-zoom-ratio-tolerance", type=float, default=DEFAULT_PTZ_ZOOM_RATIO_TOLERANCE)
+    parser.add_argument("--ptz-zoom-max-passes", type=int, default=DEFAULT_PTZ_ZOOM_MAX_PASSES)
+    parser.add_argument("--ptz-zoom-nudge-speed", type=int, default=DEFAULT_PTZ_ZOOM_NUDGE_SPEED)
+    parser.add_argument("--ptz-zoom-nudge-seconds", type=float, default=DEFAULT_PTZ_ZOOM_NUDGE_SECONDS)
+    parser.add_argument("--ptz-zoom-nudge-steps", type=int, default=DEFAULT_PTZ_ZOOM_NUDGE_STEPS)
+    parser.add_argument("--ptz-zoom-focus-timeout", type=float, default=DEFAULT_PTZ_ZOOM_FOCUS_TIMEOUT)
     return parser.parse_args()

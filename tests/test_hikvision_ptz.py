@@ -1,0 +1,159 @@
+from __future__ import annotations
+
+import ctypes
+
+import recognition_http_server.hikvision_ptz as hikvision_ptz
+from recognition_http_server.hikvision_ptz import HikvisionFieldOfView, HikvisionPTZConfig, PTZPosition
+
+
+class FakeSDK:
+    def __init__(self) -> None:
+        self.calls: list[tuple[int, int, int, int, int]] = []
+
+    def NET_DVR_PTZControlWithSpeed_Other(self, user_id, channel, command, stop, speed):  # noqa: ANN001, ANN202
+        self.calls.append((user_id, channel, command, stop, speed))
+        return True
+
+
+def test_nudge_by_delta_splits_large_pan_into_two_correction_steps(monkeypatch) -> None:
+    sleep_durations: list[float] = []
+    monkeypatch.setattr(hikvision_ptz.time, "sleep", sleep_durations.append)
+
+    sdk = FakeSDK()
+    config = HikvisionPTZConfig(
+        channel=1,
+        nudge_speed=1,
+        nudge_degrees_per_second=8.0,
+        nudge_max_seconds=1.0,
+        nudge_max_steps=2,
+    )
+
+    hikvision_ptz._nudge_by_delta(sdk, 3, config, pan_delta_deg=20.0, tilt_delta_deg=0.0)
+
+    assert sleep_durations == [1.0, 1.0]
+    assert sdk.calls == [
+        (3, 1, hikvision_ptz.PTZ_COMMANDS["right"], 0, 1),
+        (3, 1, hikvision_ptz.PTZ_COMMANDS["right"], 1, 1),
+        (3, 1, hikvision_ptz.PTZ_COMMANDS["right"], 0, 1),
+        (3, 1, hikvision_ptz.PTZ_COMMANDS["right"], 1, 1),
+    ]
+
+
+def test_nudge_by_delta_scales_tilt_duration(monkeypatch) -> None:
+    sleep_durations: list[float] = []
+    monkeypatch.setattr(hikvision_ptz.time, "sleep", sleep_durations.append)
+
+    sdk = FakeSDK()
+    config = HikvisionPTZConfig(
+        channel=1,
+        nudge_speed=1,
+        nudge_degrees_per_second=0.5,
+        nudge_min_seconds=0.05,
+        nudge_max_seconds=1.0,
+        nudge_max_steps=4,
+        tilt_nudge_scale=2.0,
+    )
+
+    hikvision_ptz._nudge_by_delta(sdk, 3, config, pan_delta_deg=0.0, tilt_delta_deg=0.02)
+
+    assert sleep_durations == [0.1]
+    assert sdk.calls == [
+        (3, 1, hikvision_ptz.PTZ_COMMANDS["up"], 0, 1),
+        (3, 1, hikvision_ptz.PTZ_COMMANDS["up"], 1, 1),
+    ]
+
+
+def test_nudge_zoom_sends_zoom_in_commands(monkeypatch) -> None:
+    sleep_durations: list[float] = []
+    monkeypatch.setattr(hikvision_ptz.time, "sleep", sleep_durations.append)
+
+    sdk = FakeSDK()
+    config = HikvisionPTZConfig(channel=1, zoom_nudge_speed=1, zoom_nudge_seconds=0.3, zoom_nudge_steps=2)
+
+    hikvision_ptz._nudge_zoom(sdk, 3, config, "in")
+
+    assert sleep_durations == [0.3, 0.3]
+    assert sdk.calls == [
+        (3, 1, hikvision_ptz.PTZ_COMMANDS["zoom-in"], 0, 1),
+        (3, 1, hikvision_ptz.PTZ_COMMANDS["zoom-in"], 1, 1),
+        (3, 1, hikvision_ptz.PTZ_COMMANDS["zoom-in"], 0, 1),
+        (3, 1, hikvision_ptz.PTZ_COMMANDS["zoom-in"], 1, 1),
+    ]
+
+
+class FakeFOVSDK:
+    def __init__(self) -> None:
+        self.command = None
+        self.channel = None
+
+    def NET_DVR_GetSTDConfig(self, user_id, command, config):  # noqa: ANN001, ANN202
+        self.command = command
+        cfg = ctypes.cast(config, ctypes.POINTER(hikvision_ptz.NET_DVR_STD_CONFIG)).contents
+        self.channel = ctypes.cast(cfg.lpCondBuffer, ctypes.POINTER(ctypes.c_int)).contents.value
+        info = ctypes.cast(cfg.lpOutBuffer, ctypes.POINTER(hikvision_ptz.NET_DVR_GIS_INFO)).contents
+        info.fHorizontalValue = 2.9
+        info.fVerticalValue = 1.63
+        info.fMinHorizontalValue = 2.9
+        info.fMaxHorizontalValue = 54.93
+        info.fMinVerticalValue = 1.63
+        info.fMaxVerticalValue = 32.6
+        info.struPtzPos.fZoomPos = 25.0
+        return True
+
+
+def test_read_gis_fov_returns_current_optical_field_of_view() -> None:
+    sdk = FakeFOVSDK()
+
+    fov = hikvision_ptz._read_gis_fov(sdk, user_id=3, channel=1)
+
+    assert sdk.command == hikvision_ptz.NET_DVR_GET_GISINFO
+    assert sdk.channel == 1
+    assert fov == HikvisionFieldOfView(
+        horizontal_deg=2.9,
+        vertical_deg=1.63,
+        min_horizontal_deg=2.9,
+        max_horizontal_deg=54.93,
+        min_vertical_deg=1.63,
+        max_vertical_deg=32.6,
+        zoom=25.0,
+    )
+
+
+def test_controller_can_read_and_restore_absolute_ptz_position(monkeypatch) -> None:
+    calls = []
+
+    class FakeControllerSDK:
+        def NET_DVR_Init(self) -> bool:
+            return True
+
+        def NET_DVR_GetLastError(self) -> int:
+            return 0
+
+        def NET_DVR_Logout(self, user_id):  # noqa: ANN001, ANN202
+            calls.append(("logout", user_id))
+
+        def NET_DVR_Cleanup(self):  # noqa: ANN202
+            calls.append("cleanup")
+
+    sdk = FakeControllerSDK()
+    position = PTZPosition(pan_deg=5.0, tilt_deg=1.0, zoom_deg=12.0)
+
+    monkeypatch.setattr(hikvision_ptz, "_load_sdk", lambda lib_dir: sdk)
+    monkeypatch.setattr(hikvision_ptz, "_configure_sdk_paths", lambda sdk_arg, lib_dir: calls.append("configure"))
+    monkeypatch.setattr(hikvision_ptz, "_bind_local_ip", lambda sdk_arg, local_ip: calls.append(("bind", local_ip)))
+    monkeypatch.setattr(hikvision_ptz, "_login", lambda sdk_arg, config: 7)
+    monkeypatch.setattr(hikvision_ptz, "_read_ptz", lambda sdk_arg, user_id, channel: position)
+
+    def fake_set_ptz(sdk_arg, user_id, channel, pan_deg, tilt_deg, zoom_deg):  # noqa: ANN001, ANN202
+        calls.append(("set", user_id, channel, pan_deg, tilt_deg, zoom_deg))
+
+    monkeypatch.setattr(hikvision_ptz, "_set_ptz", fake_set_ptz)
+
+    controller = hikvision_ptz.HikvisionPTZController(
+        HikvisionPTZConfig(host="192.168.1.64", username="admin", password="secret", channel=1)
+    )
+
+    assert controller.read_position() == position
+    controller.set_position(position)
+
+    assert ("set", 7, 1, 5.0, 1.0, 12.0) in calls

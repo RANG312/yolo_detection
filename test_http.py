@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import threading
 import time
 from datetime import datetime
@@ -21,6 +22,7 @@ DEFAULT_CALLBACK_PORT = 8088
 DEFAULT_CALLBACK_PATH = "/api/v1/recognition/callback"
 DEFAULT_TIMEOUT = 120
 DEFAULT_OUTPUT = Path("results/http_service/test_callback_payload.json")
+DEFAULT_HIK_OUTPUT_DIR = Path("results/http_service/hikvision_captures")
 
 SCENE_METER = "meter"
 SCENE_FIRE = "fire"
@@ -111,7 +113,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--images",
         nargs="+",
-        required=True,
         help="One or more local image paths or HTTP image URLs. Multiple images will be joined by comma.",
     )
     parser.add_argument(
@@ -149,6 +150,39 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--debug-center", action="store_true", help="Pass debug_center=true in extra_info.")
     parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT, help="Wait timeout in seconds for callback.")
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT, help="Where to save callback payload JSON.")
+    parser.add_argument(
+        "--hik-capture",
+        action="store_true",
+        help="Capture one snapshot from a Hikvision camera and use it as the request image.",
+    )
+    parser.add_argument("--hik-host", default=os.environ.get("HIK_HOST", ""), help="Hikvision device host.")
+    parser.add_argument("--hik-port", type=int, default=8000, help="Hikvision SDK port.")
+    parser.add_argument("--hik-username", default=os.environ.get("HIK_USERNAME", "admin"))
+    parser.add_argument("--hik-password", default=os.environ.get("HIK_PASSWORD", ""))
+    parser.add_argument("--hik-channel", type=int, default=1)
+    parser.add_argument("--hik-snapshot-timeout", type=float, default=5.0, help="Hikvision snapshot timeout in seconds.")
+    parser.add_argument(
+        "--hik-output-dir",
+        type=Path,
+        default=DEFAULT_HIK_OUTPUT_DIR,
+        help="Directory where --hik-capture stores the snapshot.",
+    )
+    parser.add_argument(
+        "--hik-snapshot-name",
+        default="",
+        help="Optional filename for --hik-capture. Defaults to hik_YYYYmmdd_HHMMSS.jpg.",
+    )
+    parser.add_argument(
+        "--hik-restore-delay",
+        type=float,
+        default=10.0,
+        help="Seconds to wait after the test before restoring the initial Hikvision PTZ position.",
+    )
+    parser.add_argument(
+        "--no-hik-restore",
+        action="store_true",
+        help="Do not restore the initial Hikvision PTZ position after --hik-capture test.",
+    )
     return parser.parse_args()
 
 
@@ -233,12 +267,90 @@ def build_callback_url(args: argparse.Namespace) -> str:
     return f"http://{args.host}:{args.callback_port}{args.callback_path}"
 
 
+def create_hikvision_controller(args: argparse.Namespace):  # noqa: ANN201
+    if not args.hik_host:
+        raise ValueError("Pass --hik-host or set HIK_HOST when using --hik-capture.")
+    if not args.hik_password:
+        raise ValueError("Pass --hik-password or set HIK_PASSWORD when using --hik-capture.")
+
+    from recognition_http_server.hikvision_ptz import HikvisionPTZConfig, HikvisionPTZController
+
+    return HikvisionPTZController(
+        HikvisionPTZConfig(
+            host=args.hik_host,
+            port=args.hik_port,
+            username=args.hik_username,
+            password=args.hik_password,
+            channel=args.hik_channel,
+            snapshot_timeout=args.hik_snapshot_timeout,
+        )
+    )
+
+
+def capture_hikvision_image(args: argparse.Namespace) -> Path:
+    import cv2
+
+    output_dir = Path(args.hik_output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    snapshot_name = args.hik_snapshot_name.strip()
+    if not snapshot_name:
+        snapshot_name = f"hik_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
+    capture_path = output_dir / snapshot_name
+    if not capture_path.suffix:
+        capture_path = capture_path.with_suffix(".jpg")
+
+    controller = create_hikvision_controller(args)
+    image = controller.capture_image()
+    if not cv2.imwrite(str(capture_path), image):
+        raise RuntimeError(f"Failed to save Hikvision snapshot: {capture_path}")
+    print(f"Hikvision snapshot saved to: {capture_path}")
+    return capture_path
+
+
+def resolve_image_paths(args: argparse.Namespace) -> list[str]:
+    images = list(args.images or [])
+    if args.hik_capture:
+        capture_path = capture_hikvision_image(args)
+        if images:
+            print(f"--hik-capture is set; using captured image instead of --images: {capture_path}")
+        return [str(capture_path)]
+    if not images:
+        raise ValueError("--images is required unless --hik-capture is set.")
+    return images
+
+
+def read_initial_hikvision_position(args: argparse.Namespace):  # noqa: ANN201
+    if not args.hik_capture or args.no_hik_restore:
+        return None
+    position = create_hikvision_controller(args).read_position()
+    print(
+        "Initial Hikvision PTZ position: "
+        f"pan={position.pan_deg:.3f} tilt={position.tilt_deg:.3f} zoom={position.zoom_deg:.3f}"
+    )
+    return position
+
+
+def restore_hikvision_position_after_delay(args: argparse.Namespace, position) -> None:  # noqa: ANN001
+    if position is None:
+        return
+    delay = max(0.0, float(args.hik_restore_delay))
+    if delay > 0:
+        print(f"Waiting {delay:.1f}s before restoring Hikvision PTZ position...")
+        time.sleep(delay)
+    create_hikvision_controller(args).set_position(position)
+    print(
+        "Hikvision PTZ position restored: "
+        f"pan={position.pan_deg:.3f} tilt={position.tilt_deg:.3f} zoom={position.zoom_deg:.3f}"
+    )
+
+
 def build_request_payload(args: argparse.Namespace, callback_url: str) -> dict[str, Any]:
     extra_info: dict[str, Any] = {"callback_url": callback_url}
     if args.debug_center:
         extra_info["debug_center"] = True
     data_types = parse_data_types(args.data_type, args.recognize_type, args.recognize_subtype, args.scene)
-    if len(data_types) not in {1, len(args.images)}:
+    image_paths = resolve_image_paths(args)
+    if len(data_types) not in {1, len(image_paths)}:
         raise ValueError(
             "One image uses one data_type. Provide either one shared item or one item per image for "
             "--data-type or --recognize-type/--recognize-subtype."
@@ -246,7 +358,7 @@ def build_request_payload(args: argparse.Namespace, callback_url: str) -> dict[s
 
     return {
         "req_id": str(uuid4()),
-        "image_path": ",".join(args.images),
+        "image_path": ",".join(image_paths),
         "data_type": data_types,
         "extra_info": json.dumps(extra_info, ensure_ascii=False),
     }
@@ -339,11 +451,13 @@ def print_callback_summary(payload: dict[str, Any]) -> None:
 def main() -> None:
     args = parse_args()
     state = CallbackState()
-    callback_server = start_callback_server(args, state)
     callback_url = build_callback_url(args)
-    payload = build_request_payload(args, callback_url)
+    initial_hikvision_position = read_initial_hikvision_position(args)
+    callback_server = None
 
     try:
+        payload = build_request_payload(args, callback_url)
+        callback_server = start_callback_server(args, state)
         submit_response = post_task(args.server, payload)
         req_id = submit_response.get("req_id", payload["req_id"])
         deadline = time.time() + args.timeout
@@ -365,8 +479,10 @@ def main() -> None:
         save_callback_payload(args.output, callback_payload)
         print_callback_summary(callback_payload)
     finally:
-        callback_server.shutdown()
-        callback_server.server_close()
+        if callback_server is not None:
+            callback_server.shutdown()
+            callback_server.server_close()
+        restore_hikvision_position_after_delay(args, initial_hikvision_position)
 
 
 if __name__ == "__main__":

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import threading
 import shutil
+import time
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -22,8 +23,10 @@ from recognition_http_server.constants import (
 from recognition_http_server.dial_reading import load_model
 from recognition_http_server.handlers.detection import run_detection_recognition
 from recognition_http_server.handlers.meter import run_digital_meter_recognition, run_pointer_meter_recognition
+from recognition_http_server.hikvision_ptz import HikvisionPTZConfig, HikvisionPTZController
 from recognition_http_server.helpers import (
     align_data_types_to_images,
+    build_aligned_image_path,
     build_detection_result_path,
     build_error_data_entry,
     build_callback_url,
@@ -34,6 +37,7 @@ from recognition_http_server.helpers import (
     resolve_task_kind,
     split_image_paths,
 )
+from recognition_http_server.ptz_alignment import PTZAlignmentConfig
 from recognition_http_server.schemas import TaskHandler, TaskState
 from recognition_http_server.utils.image_io import prepare_image
 
@@ -50,6 +54,56 @@ class RecognitionService:
         self.output_root = self.result_root / "outputs"
         self.input_root.mkdir(parents=True, exist_ok=True)
         self.output_root.mkdir(parents=True, exist_ok=True)
+        self.ptz_alignment_config = PTZAlignmentConfig(
+            enabled=bool(getattr(config, "ptz_align_enabled", False)),
+            horizontal_fov_deg=float(getattr(config, "ptz_horizontal_fov_deg", 60.0)),
+            vertical_fov_deg=float(getattr(config, "ptz_vertical_fov_deg", 40.0)),
+            threshold_deg=float(getattr(config, "ptz_align_threshold_deg", 1.0)),
+            max_delta_deg=float(getattr(config, "ptz_align_max_delta_deg", 10.0)),
+            max_passes=int(getattr(config, "ptz_align_max_passes", 2)),
+            zoom_enabled=bool(getattr(config, "ptz_zoom_enabled", True)),
+            zoom_target_height_ratio=float(getattr(config, "ptz_zoom_target_height_ratio", 0.8)),
+            zoom_ratio_tolerance=float(getattr(config, "ptz_zoom_ratio_tolerance", 0.05)),
+            zoom_max_passes=int(getattr(config, "ptz_zoom_max_passes", 3)),
+        )
+        self.ptz_controller = None
+        if self.ptz_alignment_config.enabled:
+            self.ptz_controller = HikvisionPTZController(
+                HikvisionPTZConfig(
+                    host=getattr(config, "ptz_host", ""),
+                    port=getattr(config, "ptz_port", 8000),
+                    username=getattr(config, "ptz_username", "admin"),
+                    password=getattr(config, "ptz_password", ""),
+                    channel=getattr(config, "ptz_channel", 1),
+                    local_ip=getattr(config, "ptz_local_ip", ""),
+                    tilt_min_deg=getattr(config, "ptz_tilt_min_deg", 0.0),
+                    tilt_max_deg=getattr(config, "ptz_tilt_max_deg", 90.0),
+                    settle_seconds=getattr(config, "ptz_settle_seconds", 0.3),
+                    nudge_speed=getattr(config, "ptz_nudge_speed", 1),
+                    nudge_degrees_per_second=getattr(config, "ptz_nudge_degrees_per_second", 8.0),
+                    nudge_min_seconds=getattr(config, "ptz_nudge_min_seconds", 0.05),
+                    nudge_max_seconds=getattr(config, "ptz_nudge_max_seconds", 1.0),
+                    nudge_max_steps=getattr(config, "ptz_nudge_max_steps", 2),
+                    tilt_nudge_scale=getattr(config, "ptz_tilt_nudge_scale", 1.0),
+                    zoom_nudge_speed=getattr(config, "ptz_zoom_nudge_speed", 1),
+                    zoom_nudge_seconds=getattr(config, "ptz_zoom_nudge_seconds", 0.6),
+                    zoom_nudge_steps=getattr(config, "ptz_zoom_nudge_steps", 1),
+                    zoom_focus_timeout=getattr(config, "ptz_zoom_focus_timeout", 2.0),
+                ),
+                logger=self.logger,
+            )
+            self.logger.info(
+                (
+                    "ptz alignment enabled: host=%s channel=%s fov_source=sdk_per_meter_request "
+                    "fallback_hfov=%.3f fallback_vfov=%.3f threshold=%.3f max_delta=%.3f"
+                ),
+                getattr(config, "ptz_host", ""),
+                getattr(config, "ptz_channel", 1),
+                self.ptz_alignment_config.horizontal_fov_deg,
+                self.ptz_alignment_config.vertical_fov_deg,
+                self.ptz_alignment_config.threshold_deg,
+                self.ptz_alignment_config.max_delta_deg,
+            )
 
         self.logger.info("loading models")
         self.meter_model, self.config.annotation_mode = load_model(config.model)
@@ -238,6 +292,12 @@ class RecognitionService:
 
         image_result_path = image_output_dir / f"{local_image_path.stem}_result_{handler.result_suffix}.jpg"
         detection_result_path = build_detection_result_path(image_path)
+        aligned_image_path = build_aligned_image_path(image_path, image_output_dir, local_image_path.stem)
+        handler_extra_info = dict(extra_info)
+        if task_kind == TASK_KIND_METER:
+            handler_extra_info["_ptz_capture_dir"] = str(image_output_dir)
+            handler_extra_info["_ptz_capture_stem"] = local_image_path.stem
+            handler_extra_info["_ptz_aligned_image_path"] = str(aligned_image_path)
         self.logger.info(
             "image processing started: req_id=%s index=%s task_kind=%s subtype=%s source=%s",
             req_id,
@@ -246,9 +306,11 @@ class RecognitionService:
             data_type["recognize_subtype"],
             image_path,
         )
+        processing_start = time.perf_counter()
         try:
-            recognize_items = handler.runner(local_image_path, data_type, image_result_path, extra_info, debug_center)
+            recognize_items = handler.runner(local_image_path, data_type, image_result_path, handler_extra_info, debug_center)
             has_success = any(item.get("recognize_value") for item in recognize_items)
+            source_image_path = str(aligned_image_path) if task_kind == TASK_KIND_METER and aligned_image_path.exists() else image_path
             result_image_path = str(image_result_path) if has_success else image_path
             if has_success and detection_result_path is not None and image_result_path.exists():
                 detection_result_path.parent.mkdir(parents=True, exist_ok=True)
@@ -263,10 +325,11 @@ class RecognitionService:
                     image_result_path,
                 )
             self.logger.info(
-                "image processing finished: req_id=%s index=%s task_kind=%s result_path=%s items=%s",
+                "image processing finished: req_id=%s index=%s task_kind=%s elapsed=%.3fs result_path=%s items=%s",
                 req_id,
                 index,
                 task_kind,
+                time.perf_counter() - processing_start,
                 result_image_path,
                 len(recognize_items),
             )
@@ -278,15 +341,17 @@ class RecognitionService:
             recognize_item["confidence"] = ""
             recognize_items = [recognize_item]
             result_image_path = image_path
+            source_image_path = image_path
             self.logger.exception(
-                "image processing failed and downgraded to error result: req_id=%s index=%s task_kind=%s source=%s",
+                "image processing failed and downgraded to error result: req_id=%s index=%s task_kind=%s elapsed=%.3fs source=%s",
                 req_id,
                 index,
                 task_kind,
+                time.perf_counter() - processing_start,
                 image_path,
             )
         return {
-            "image_path": image_path,
+            "image_path": source_image_path,
             "image_path_result": result_image_path,
             "recognize_data": recognize_items,
         }
@@ -308,6 +373,7 @@ class RecognitionService:
             local_image_path,
             [data_type],
             visualize_path,
+            extra_info,
             debug_center,
             meter_subtype.scale or self.config.max_value,
         )

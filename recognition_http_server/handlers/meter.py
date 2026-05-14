@@ -1,14 +1,78 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 import cv2
 
 from recognition_http_server.dial_reading import predict_image_instances, save_canvas
+from recognition_http_server.hikvision_ptz import HikvisionPTZController
 from recognition_http_server.helpers import build_error_data_entry, build_meter_predict_args, build_success_data_entry
+from recognition_http_server.ptz_alignment import auto_tune_ptz_settings
 
 
-def run_pointer_meter_recognition(service, local_image_path: Path, data_types: list[dict[str, str]], visualize_path: Path, debug_center: bool, scale: float) -> list[dict[str, str]]:
+def resolve_current_ptz_runtime(service, base_config=None):  # noqa: ANN001, ANN201
+    """Return PTZ config and controller tuned from the current SDK FOV."""
+    config = base_config or service.ptz_alignment_config
+    if not getattr(config, "enabled", False):
+        return config, getattr(service, "ptz_controller", None)
+
+    controller = getattr(service, "ptz_controller", None)
+    if controller is None or not hasattr(controller, "read_field_of_view"):
+        return config, controller
+
+    fov = controller.read_field_of_view()
+    tuned = auto_tune_ptz_settings(fov.horizontal_deg, fov.vertical_deg)
+    current_config = replace(
+        config,
+        horizontal_fov_deg=float(fov.horizontal_deg),
+        vertical_fov_deg=float(fov.vertical_deg),
+        threshold_deg=tuned.threshold_deg,
+        max_delta_deg=tuned.max_delta_deg,
+    )
+    tuned_controller = controller
+    if isinstance(controller, HikvisionPTZController):
+        tuned_controller = HikvisionPTZController(
+            replace(
+                controller.config,
+                nudge_degrees_per_second=tuned.nudge_degrees_per_second,
+                nudge_max_steps=tuned.nudge_max_steps,
+                tilt_nudge_scale=tuned.tilt_nudge_scale,
+            ),
+            logger=getattr(service, "logger", None),
+        )
+    logger = getattr(service, "logger", None)
+    if logger is not None:
+        logger.info(
+            (
+                "meter ptz fov/tuning read from sdk: hfov=%.3f vfov=%.3f threshold=%.3f "
+                "max_delta=%.3f nudge_dps=%.3f nudge_steps=%s tilt_scale=%.3f"
+            ),
+            current_config.horizontal_fov_deg,
+            current_config.vertical_fov_deg,
+            current_config.threshold_deg,
+            current_config.max_delta_deg,
+            tuned.nudge_degrees_per_second,
+            tuned.nudge_max_steps,
+            tuned.tilt_nudge_scale,
+        )
+    return current_config, tuned_controller
+
+
+def resolve_current_ptz_alignment_config(service, base_config=None):  # noqa: ANN001, ANN201
+    """Return PTZ alignment config with current SDK FOV when alignment is enabled."""
+    return resolve_current_ptz_runtime(service, base_config)[0]
+
+
+def run_pointer_meter_recognition(
+    service,
+    local_image_path: Path,
+    data_types: list[dict[str, str]],
+    visualize_path: Path,
+    extra_info: dict[str, str],
+    debug_center: bool,
+    scale: float,
+) -> list[dict[str, str]]:
     """
     执行指针表计读数，并返回应用量程后的最终业务值。
 
@@ -16,9 +80,18 @@ def run_pointer_meter_recognition(service, local_image_path: Path, data_types: l
     程配置，得到最终读数。
     """
     predict_args = build_meter_predict_args(service.config, visualize_path, debug_center=debug_center)
+    predict_args.ptz_alignment_config, predict_args.ptz_controller = resolve_current_ptz_runtime(service)
+    predict_args.ptz_fov_provider = lambda config: resolve_current_ptz_runtime(service, config)
+    predict_args.ptz_logger = service.logger
+    if "_ptz_capture_dir" in extra_info:
+        predict_args.ptz_capture_dir = Path(str(extra_info["_ptz_capture_dir"]))
+    if "_ptz_capture_stem" in extra_info:
+        predict_args.ptz_capture_stem = str(extra_info["_ptz_capture_stem"])
+    if "_ptz_aligned_image_path" in extra_info:
+        predict_args.ptz_aligned_image_path = Path(str(extra_info["_ptz_aligned_image_path"]))
     service.logger.info("meter recognition running: image=%s output=%s", local_image_path, visualize_path)
     with service._predict_lock:
-        canvas, prediction_instances, _, _ = predict_image_instances(
+        canvas, prediction_instances, inference_time, compute_time = predict_image_instances(
             local_image_path, service.meter_model, predict_args, service.config.annotation_mode
         )
     recognize_items: list[dict[str, str]] = []
@@ -49,9 +122,11 @@ def run_pointer_meter_recognition(service, local_image_path: Path, data_types: l
         save_canvas(canvas, visualize_path)
 
     service.logger.info(
-        "meter recognition finished: image=%s meters=%s output=%s",
+        "meter recognition finished: image=%s meters=%s inference=%.3fs compute=%.3fs output=%s",
         local_image_path,
         len(recognize_items),
+        inference_time,
+        compute_time,
         visualize_path,
     )
     return recognize_items
