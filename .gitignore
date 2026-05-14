@@ -28,6 +28,14 @@ share/python-wheels/
 MANIFEST
 requirements.txt
 !examples/**/requirements.txt
+
+# Hikvision SDK deployment libraries are intentionally versioned for x86/arm64 targets.
+!HK_SDK/
+!HK_SDK/**/
+!HK_SDK/**/*.so
+!HK_SDK/**/*.so.*
+!HK_SDK/**/HCNetSDK_Log_Switch.xml
+
 setup.py
 ultralytics.egg-info
 
