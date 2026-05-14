@@ -273,6 +273,7 @@ After=network.target
 Type=simple
 User=${run_user}
 WorkingDirectory=${working_dir}
+UMask=0002
 Environment=PYTHONNOUSERSITE=1
 Environment=HIK_SDK_LIB_DIR=${hik_sdk_lib_dir}
 Environment=LD_LIBRARY_PATH=${hik_sdk_lib_dir}
@@ -311,6 +312,17 @@ install_systemd_service() {
   sudo systemctl status --no-pager "${SYSTEMD_SERVICE_NAME}"
 }
 
+ensure_runtime_permissions() {
+  local access_user="$1"
+  local results_dir="${SCRIPT_DIR}/results"
+
+  mkdir -p "${results_dir}"
+  sudo chgrp -R "${access_user}" "${results_dir}"
+  sudo chmod -R u+rwX,g+rwX,o+rX "${results_dir}"
+  sudo find "${results_dir}" -type d -exec chmod g+s {} +
+  log "已修正运行输出目录权限: ${results_dir} -> group ${access_user}, g+rwX, setgid"
+}
+
 main() {
   local conda_base=""
   local conda_sh=""
@@ -321,6 +333,10 @@ main() {
   local hik_sdk_lib_dir=""
   local env_was_unpacked=0
   local run_user="root"
+  local access_user=""
+
+  access_user="$(stat -c '%U' "${SCRIPT_DIR}")"
+  [[ -n "${access_user}" ]] || fail "无法检测目录属主: ${SCRIPT_DIR}"
 
   conda_base="$(find_conda_base)" || fail "未找到 miniconda/anaconda，请确认 conda 已安装"
   conda_sh="$(find_conda_sh "${conda_base}")"
@@ -353,6 +369,7 @@ main() {
   conda activate "${ENV_NAME}"
   set -u
 
+  ensure_runtime_permissions "${access_user}"
   install_systemd_service "${SYSTEMD_SERVICE_PATH}" "${run_user}" "${SCRIPT_DIR}" "${conda_sh}" "${env_prefix}" "${hik_sdk_lib_dir}"
 
   remove_resources_dir_if_present

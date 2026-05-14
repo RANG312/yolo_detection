@@ -136,6 +136,33 @@ def test_nudge_zoom_sends_zoom_in_commands(monkeypatch) -> None:
     ]
 
 
+def test_nudge_ptz_retries_transient_stop_failure(monkeypatch) -> None:
+    sleep_durations: list[float] = []
+    monkeypatch.setattr(hikvision_ptz.time, "sleep", sleep_durations.append)
+
+    class RetryStopSDK:
+        def __init__(self) -> None:
+            self.calls: list[tuple[int, int, int, int, int]] = []
+
+        def NET_DVR_PTZControlWithSpeed_Other(self, user_id, channel, command, stop, speed):  # noqa: ANN001, ANN202
+            self.calls.append((user_id, channel, command, stop, speed))
+            return stop == 0 or len([call for call in self.calls if call[3] == 1]) >= 2
+
+        def NET_DVR_GetLastError(self) -> int:
+            return 56
+
+    sdk = RetryStopSDK()
+
+    hikvision_ptz._nudge_ptz(sdk, 3, 1, "right", 0.2, 1)
+
+    assert sleep_durations == [0.2, 0.1]
+    assert sdk.calls == [
+        (3, 1, hikvision_ptz.PTZ_COMMANDS["right"], 0, 1),
+        (3, 1, hikvision_ptz.PTZ_COMMANDS["right"], 1, 1),
+        (3, 1, hikvision_ptz.PTZ_COMMANDS["right"], 1, 1),
+    ]
+
+
 class FakeFOVSDK:
     def __init__(self) -> None:
         self.command = None
@@ -212,3 +239,50 @@ def test_controller_can_read_and_restore_absolute_ptz_position(monkeypatch) -> N
     controller.set_position(position)
 
     assert ("set", 7, 1, 5.0, 1.0, 12.0) in calls
+
+
+def test_controller_reuses_sdk_session_until_closed(monkeypatch) -> None:
+    calls = []
+
+    class FakePersistentSDK:
+        def NET_DVR_Init(self) -> bool:
+            calls.append("init")
+            return True
+
+        def NET_DVR_GetLastError(self) -> int:
+            return 0
+
+        def NET_DVR_Logout(self, user_id):  # noqa: ANN001, ANN202
+            calls.append(("logout", user_id))
+            return True
+
+        def NET_DVR_Cleanup(self):  # noqa: ANN202
+            calls.append("cleanup")
+            return True
+
+    sdk = FakePersistentSDK()
+    fov = HikvisionFieldOfView(7.48, 4.21, 2.9, 54.93, 1.63, 32.6, 9.1)
+
+    monkeypatch.setattr(hikvision_ptz, "_load_sdk", lambda lib_dir: sdk)
+    monkeypatch.setattr(hikvision_ptz, "_configure_sdk_paths", lambda sdk_arg, lib_dir: calls.append("configure"))
+    monkeypatch.setattr(hikvision_ptz, "_bind_local_ip", lambda sdk_arg, local_ip: calls.append(("bind", local_ip)))
+    monkeypatch.setattr(hikvision_ptz, "_login", lambda sdk_arg, config: 7)
+    monkeypatch.setattr(hikvision_ptz, "_read_gis_fov", lambda sdk_arg, user_id, channel: fov)
+
+    controller = hikvision_ptz.HikvisionPTZController(
+        HikvisionPTZConfig(
+            host="192.168.1.64",
+            username="admin",
+            password="secret",
+            channel=1,
+            local_ip="192.168.1.188",
+        )
+    )
+
+    assert controller.read_field_of_view() == fov
+    assert controller.read_field_of_view() == fov
+    assert calls == ["configure", "init", ("bind", "192.168.1.188")]
+
+    controller.close()
+
+    assert calls == ["configure", "init", ("bind", "192.168.1.188"), ("logout", 7), "cleanup"]

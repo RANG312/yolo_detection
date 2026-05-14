@@ -238,27 +238,58 @@ class HikvisionFieldOfView:
 
 
 class HikvisionPTZController:
-    """Small HCNetSDK wrapper that moves PTZ by setting an absolute target position."""
+    """Small HCNetSDK wrapper that keeps one SDK session for repeated PTZ operations."""
 
     def __init__(self, config: HikvisionPTZConfig, logger=None) -> None:  # noqa: ANN001
         self.config = config
         self.logger = logger
         self._lock = threading.Lock()
+        self._sdk: ctypes.CDLL | None = None
+        self._user_id = -1
+
+    def close(self) -> None:
+        """Release the persistent HCNetSDK login and SDK process state."""
+        with self._lock:
+            self._close_unlocked()
+
+    def _ensure_session_unlocked(self) -> tuple[ctypes.CDLL, int]:
+        if self._sdk is not None and self._user_id >= 0:
+            return self._sdk, self._user_id
+
+        sdk = _load_sdk(self.config.sdk_lib_dir)
+        _configure_sdk_paths(sdk, self.config.sdk_lib_dir)
+        if not sdk.NET_DVR_Init():
+            raise RuntimeError(f"NET_DVR_Init failed: error={sdk.NET_DVR_GetLastError()}")
+        try:
+            if self.config.local_ip:
+                _bind_local_ip(sdk, self.config.local_ip)
+            user_id = _login(sdk, self.config)
+        except Exception:
+            sdk.NET_DVR_Cleanup()
+            raise
+
+        self._sdk = sdk
+        self._user_id = user_id
+        return sdk, user_id
+
+    def _close_unlocked(self) -> None:
+        sdk = self._sdk
+        user_id = self._user_id
+        self._sdk = None
+        self._user_id = -1
+        if sdk is None:
+            return
+        if user_id >= 0:
+            sdk.NET_DVR_Logout(user_id)
+        sdk.NET_DVR_Cleanup()
 
     def align(self, request: PTZAlignmentRequest) -> None:
         if not self.config.host or not self.config.password:
             raise ValueError("Hikvision PTZ alignment requires host and password.")
 
         with self._lock:
-            sdk = _load_sdk(self.config.sdk_lib_dir)
-            _configure_sdk_paths(sdk, self.config.sdk_lib_dir)
-            if not sdk.NET_DVR_Init():
-                raise RuntimeError(f"NET_DVR_Init failed: error={sdk.NET_DVR_GetLastError()}")
-            user_id = -1
             try:
-                if self.config.local_ip:
-                    _bind_local_ip(sdk, self.config.local_ip)
-                user_id = _login(sdk, self.config)
+                sdk, user_id = self._ensure_session_unlocked()
                 before = _read_ptz(sdk, user_id, self.config.channel)
                 _nudge_by_delta(sdk, user_id, self.config, request.pan_delta_deg, request.tilt_delta_deg)
                 after = _read_ptz(sdk, user_id, self.config.channel)
@@ -274,10 +305,9 @@ class HikvisionPTZController:
                     )
                 if self.config.settle_seconds > 0:
                     time.sleep(self.config.settle_seconds)
-            finally:
-                if user_id >= 0:
-                    sdk.NET_DVR_Logout(user_id)
-                sdk.NET_DVR_Cleanup()
+            except Exception:
+                self._close_unlocked()
+                raise
 
     def zoom(self, request) -> None:  # noqa: ANN001
         if not self.config.host or not self.config.password:
@@ -286,15 +316,8 @@ class HikvisionPTZController:
             return
 
         with self._lock:
-            sdk = _load_sdk(self.config.sdk_lib_dir)
-            _configure_sdk_paths(sdk, self.config.sdk_lib_dir)
-            if not sdk.NET_DVR_Init():
-                raise RuntimeError(f"NET_DVR_Init failed: error={sdk.NET_DVR_GetLastError()}")
-            user_id = -1
             try:
-                if self.config.local_ip:
-                    _bind_local_ip(sdk, self.config.local_ip)
-                user_id = _login(sdk, self.config)
+                sdk, user_id = self._ensure_session_unlocked()
                 before = _read_ptz(sdk, user_id, self.config.channel)
                 _nudge_zoom(sdk, user_id, self.config, request.zoom_direction)
                 after = _read_ptz(sdk, user_id, self.config.channel)
@@ -316,65 +339,41 @@ class HikvisionPTZController:
                     )
                 if self.config.zoom_focus_timeout > 0:
                     time.sleep(self.config.zoom_focus_timeout)
-            finally:
-                if user_id >= 0:
-                    sdk.NET_DVR_Logout(user_id)
-                sdk.NET_DVR_Cleanup()
+            except Exception:
+                self._close_unlocked()
+                raise
 
     def read_field_of_view(self) -> HikvisionFieldOfView:
         if not self.config.host or not self.config.password:
             raise ValueError("Hikvision FOV reading requires host and password.")
 
         with self._lock:
-            sdk = _load_sdk(self.config.sdk_lib_dir)
-            _configure_sdk_paths(sdk, self.config.sdk_lib_dir)
-            if not sdk.NET_DVR_Init():
-                raise RuntimeError(f"NET_DVR_Init failed: error={sdk.NET_DVR_GetLastError()}")
-            user_id = -1
             try:
-                if self.config.local_ip:
-                    _bind_local_ip(sdk, self.config.local_ip)
-                user_id = _login(sdk, self.config)
+                sdk, user_id = self._ensure_session_unlocked()
                 return _read_gis_fov(sdk, user_id, self.config.channel)
-            finally:
-                if user_id >= 0:
-                    sdk.NET_DVR_Logout(user_id)
-                sdk.NET_DVR_Cleanup()
+            except Exception:
+                self._close_unlocked()
+                raise
 
     def read_position(self) -> PTZPosition:
         if not self.config.host or not self.config.password:
             raise ValueError("Hikvision PTZ position reading requires host and password.")
 
         with self._lock:
-            sdk = _load_sdk(self.config.sdk_lib_dir)
-            _configure_sdk_paths(sdk, self.config.sdk_lib_dir)
-            if not sdk.NET_DVR_Init():
-                raise RuntimeError(f"NET_DVR_Init failed: error={sdk.NET_DVR_GetLastError()}")
-            user_id = -1
             try:
-                if self.config.local_ip:
-                    _bind_local_ip(sdk, self.config.local_ip)
-                user_id = _login(sdk, self.config)
+                sdk, user_id = self._ensure_session_unlocked()
                 return _read_ptz(sdk, user_id, self.config.channel)
-            finally:
-                if user_id >= 0:
-                    sdk.NET_DVR_Logout(user_id)
-                sdk.NET_DVR_Cleanup()
+            except Exception:
+                self._close_unlocked()
+                raise
 
     def set_position(self, position: PTZPosition) -> None:
         if not self.config.host or not self.config.password:
             raise ValueError("Hikvision PTZ position restore requires host and password.")
 
         with self._lock:
-            sdk = _load_sdk(self.config.sdk_lib_dir)
-            _configure_sdk_paths(sdk, self.config.sdk_lib_dir)
-            if not sdk.NET_DVR_Init():
-                raise RuntimeError(f"NET_DVR_Init failed: error={sdk.NET_DVR_GetLastError()}")
-            user_id = -1
             try:
-                if self.config.local_ip:
-                    _bind_local_ip(sdk, self.config.local_ip)
-                user_id = _login(sdk, self.config)
+                sdk, user_id = self._ensure_session_unlocked()
                 _set_ptz(sdk, user_id, self.config.channel, position.pan_deg, position.tilt_deg, position.zoom_deg)
                 if self.logger is not None:
                     self.logger.info(
@@ -385,10 +384,9 @@ class HikvisionPTZController:
                     )
                 if self.config.settle_seconds > 0:
                     time.sleep(self.config.settle_seconds)
-            finally:
-                if user_id >= 0:
-                    sdk.NET_DVR_Logout(user_id)
-                sdk.NET_DVR_Cleanup()
+            except Exception:
+                self._close_unlocked()
+                raise
 
     def capture_image(self) -> np.ndarray:
         if not self.config.host or not self.config.password:
@@ -642,9 +640,17 @@ def _nudge_ptz(
     try:
         time.sleep(duration)
     finally:
-        stopped = sdk.NET_DVR_PTZControlWithSpeed_Other(user_id, channel, command, 1, speed)
+        stopped = False
+        stop_error = 0
+        for attempt in range(3):
+            stopped = sdk.NET_DVR_PTZControlWithSpeed_Other(user_id, channel, command, 1, speed)
+            if stopped:
+                break
+            stop_error = int(sdk.NET_DVR_GetLastError())
+            if attempt < 2:
+                time.sleep(0.1)
     if not stopped:
-        raise RuntimeError(f"NET_DVR_PTZControlWithSpeed_Other stop failed: error={sdk.NET_DVR_GetLastError()}")
+        raise RuntimeError(f"NET_DVR_PTZControlWithSpeed_Other stop failed: error={stop_error}")
 
 
 def _decode_bcd_angle(value: int) -> float:

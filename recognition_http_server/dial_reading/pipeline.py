@@ -104,6 +104,7 @@ def predict_image_instances(
         if ptz_alignment_config is not None:
             max_alignment_passes = max(1, int(getattr(ptz_alignment_config, "max_passes", 1)))
 
+        ptz_alignment_failed = False
         for alignment_pass in range(1, max_alignment_passes + 1):
             gauge_detections = detections.get("gauge", [])
             if not gauge_detections:
@@ -126,6 +127,7 @@ def predict_image_instances(
                     gauge_box,
                 )
             except Exception as exc:  # noqa: BLE001
+                ptz_alignment_failed = True
                 if ptz_logger is not None:
                     ptz_logger.exception("meter ptz alignment skipped after sdk error: %s", exc)
                 break
@@ -166,7 +168,10 @@ def predict_image_instances(
             if alignment_pass >= max_alignment_passes:
                 break
 
-        if ptz_alignment_config is not None:
+        if ptz_alignment_failed:
+            if ptz_logger is not None:
+                ptz_logger.warning("meter ptz zoom skipped because alignment did not finish successfully")
+        elif ptz_alignment_config is not None:
             max_zoom_passes = max(0, int(getattr(ptz_alignment_config, "zoom_max_passes", 0)))
             for zoom_pass in range(1, max_zoom_passes + 1):
                 try:
