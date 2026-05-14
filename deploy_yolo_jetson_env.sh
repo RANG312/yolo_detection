@@ -167,6 +167,36 @@ ensure_cudss_installed() {
   echo "${lib_dir}"
 }
 
+find_hik_sdk_library_dir() {
+  local arch=""
+  local path=""
+
+  arch="$(uname -m)"
+  case "${arch}" in
+    aarch64|arm64)
+      path="${SCRIPT_DIR}/HK_SDK/HK_SDK_arm64_Linux/lib/linux"
+      ;;
+    x86_64|amd64)
+      for path in \
+        "${SCRIPT_DIR}/HK_SDK/HK_SDK_x86_Linux/lib/linux" \
+        "${SCRIPT_DIR}/HK_SDK/HK_SDK_x86_Linux/HCNetSDKV6.1.11.5_build20251204_linux64_ZH/库文件" \
+        "${SCRIPT_DIR}/HK_SDK_x86_Linux/HCNetSDKV6.1.11.5_build20251204_linux64_ZH/库文件"; do
+        if [[ -f "${path}/libhcnetsdk.so" ]]; then
+          echo "${path}"
+          return 0
+        fi
+      done
+      return 1
+      ;;
+    *)
+      fail "不支持的 CPU 架构: ${arch}"
+      ;;
+  esac
+
+  [[ -f "${path}/libhcnetsdk.so" ]] || fail "未找到海康 SDK 动态库: ${path}/libhcnetsdk.so"
+  echo "${path}"
+}
+
 write_conda_hooks() {
   local env_prefix="$1"
   local lib_dir="$2"
@@ -228,9 +258,11 @@ write_systemd_service_file() {
   local working_dir="$3"
   local conda_sh="$4"
   local env_prefix="$5"
+  local hik_sdk_lib_dir="$6"
   local server_script="${working_dir}/server.py"
 
   [[ -f "${server_script}" ]] || fail "未找到服务入口脚本: ${server_script}"
+  [[ -d "${hik_sdk_lib_dir}" ]] || fail "Invalid Hikvision SDK path: ${hik_sdk_lib_dir}"
 
   sudo tee "${service_path}" >/dev/null <<EOF
 [Unit]
@@ -242,6 +274,8 @@ Type=simple
 User=${run_user}
 WorkingDirectory=${working_dir}
 Environment=PYTHONNOUSERSITE=1
+Environment=HIK_SDK_LIB_DIR=${hik_sdk_lib_dir}
+Environment=LD_LIBRARY_PATH=${hik_sdk_lib_dir}
 ExecStart=/bin/bash -lc 'source "${conda_sh}" && conda activate "${env_prefix}" && exec python "${server_script}"'
 Restart=always
 RestartSec=3
@@ -259,9 +293,10 @@ install_systemd_service() {
   local working_dir="$3"
   local conda_sh="$4"
   local env_prefix="$5"
+  local hik_sdk_lib_dir="$6"
 
   log "安装 systemd 服务: ${SYSTEMD_SERVICE_NAME}"
-  write_systemd_service_file "${service_path}" "${run_user}" "${working_dir}" "${conda_sh}" "${env_prefix}"
+  write_systemd_service_file "${service_path}" "${run_user}" "${working_dir}" "${conda_sh}" "${env_prefix}" "${hik_sdk_lib_dir}"
 
   log "刷新 systemd 配置"
   sudo systemctl daemon-reload
@@ -283,6 +318,7 @@ main() {
   local archive_path=""
   local env_prefix=""
   local cudss_lib_dir=""
+  local hik_sdk_lib_dir=""
   local env_was_unpacked=0
   local run_user="root"
 
@@ -308,19 +344,23 @@ main() {
   [[ -d "${cudss_lib_dir}" ]] || fail "Invalid libcudss path: ${cudss_lib_dir}"
   write_conda_hooks "${CONDA_PREFIX}" "${cudss_lib_dir}"
 
+  hik_sdk_lib_dir="$(find_hik_sdk_library_dir)"
+  log "检测到海康 SDK 动态库目录: ${hik_sdk_lib_dir}"
+
   log "重新激活环境以立即应用新配置"
   set +u
   conda deactivate
   conda activate "${ENV_NAME}"
   set -u
 
-  install_systemd_service "${SYSTEMD_SERVICE_PATH}" "${run_user}" "${SCRIPT_DIR}" "${conda_sh}" "${env_prefix}"
+  install_systemd_service "${SYSTEMD_SERVICE_PATH}" "${run_user}" "${SCRIPT_DIR}" "${conda_sh}" "${env_prefix}" "${hik_sdk_lib_dir}"
 
   remove_resources_dir_if_present
   remove_git_dir_if_present
 
   log "部署完成"
   log "CONDA_PREFIX=${CONDA_PREFIX}"
+  log "HIK_SDK_LIB_DIR=${hik_sdk_lib_dir}"
   log "LD_LIBRARY_PATH=${LD_LIBRARY_PATH:-}"
 }
 

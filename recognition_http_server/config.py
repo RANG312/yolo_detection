@@ -113,6 +113,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--ptz-password", default=os.environ.get("HIK_PASSWORD", DEFAULT_PTZ_PASSWORD))
     parser.add_argument("--ptz-channel", type=int, default=DEFAULT_PTZ_CHANNEL)
     parser.add_argument("--ptz-local-ip", default=os.environ.get("HIK_LOCAL_IP", ""))
+    parser.add_argument(
+        "--ptz-sdk-lib-dir",
+        default=os.environ.get("HIK_SDK_LIB_DIR", ""),
+        help="Hikvision SDK library directory. Defaults to HK_SDK by CPU architecture.",
+    )
     parser.add_argument("--ptz-horizontal-fov-deg", type=float, default=DEFAULT_PTZ_HORIZONTAL_FOV_DEG)
     parser.add_argument("--ptz-vertical-fov-deg", type=float, default=DEFAULT_PTZ_VERTICAL_FOV_DEG)
     parser.add_argument("--ptz-align-threshold-deg", type=float, default=DEFAULT_PTZ_ALIGN_THRESHOLD_DEG)

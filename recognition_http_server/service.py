@@ -23,7 +23,7 @@ from recognition_http_server.constants import (
 from recognition_http_server.dial_reading import load_model
 from recognition_http_server.handlers.detection import run_detection_recognition
 from recognition_http_server.handlers.meter import run_digital_meter_recognition, run_pointer_meter_recognition
-from recognition_http_server.hikvision_ptz import HikvisionPTZConfig, HikvisionPTZController
+from recognition_http_server.hikvision_ptz import HikvisionPTZConfig, HikvisionPTZController, resolve_sdk_lib_dir
 from recognition_http_server.helpers import (
     align_data_types_to_images,
     build_aligned_image_path,
@@ -76,6 +76,7 @@ class RecognitionService:
                     password=getattr(config, "ptz_password", ""),
                     channel=getattr(config, "ptz_channel", 1),
                     local_ip=getattr(config, "ptz_local_ip", ""),
+                    sdk_lib_dir=resolve_sdk_lib_dir(getattr(config, "ptz_sdk_lib_dir", "")),
                     tilt_min_deg=getattr(config, "ptz_tilt_min_deg", 0.0),
                     tilt_max_deg=getattr(config, "ptz_tilt_max_deg", 90.0),
                     settle_seconds=getattr(config, "ptz_settle_seconds", 0.3),
@@ -95,7 +96,7 @@ class RecognitionService:
             self.logger.info(
                 (
                     "ptz alignment enabled: host=%s channel=%s fov_source=sdk_per_meter_request "
-                    "fallback_hfov=%.3f fallback_vfov=%.3f threshold=%.3f max_delta=%.3f"
+                    "fallback_hfov=%.3f fallback_vfov=%.3f threshold=%.3f max_delta=%.3f sdk_lib_dir=%s"
                 ),
                 getattr(config, "ptz_host", ""),
                 getattr(config, "ptz_channel", 1),
@@ -103,6 +104,7 @@ class RecognitionService:
                 self.ptz_alignment_config.vertical_fov_deg,
                 self.ptz_alignment_config.threshold_deg,
                 self.ptz_alignment_config.max_delta_deg,
+                resolve_sdk_lib_dir(getattr(config, "ptz_sdk_lib_dir", "")),
             )
 
         self.logger.info("loading models")

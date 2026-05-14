@@ -1,9 +1,64 @@
 from __future__ import annotations
 
 import ctypes
+from pathlib import Path
 
 import recognition_http_server.hikvision_ptz as hikvision_ptz
 from recognition_http_server.hikvision_ptz import HikvisionFieldOfView, HikvisionPTZConfig, PTZPosition
+
+
+def test_default_sdk_lib_dir_uses_arm64_sdk_for_aarch64(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(hikvision_ptz, "SDK_BASE_DIR", tmp_path / "HK_SDK")
+
+    expected = tmp_path / "HK_SDK" / "HK_SDK_arm64_Linux" / "lib" / "linux"
+
+    assert hikvision_ptz._default_sdk_lib_dir("aarch64") == expected
+
+
+def test_default_sdk_lib_dir_prefers_flat_x86_sdk_when_present(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(hikvision_ptz, "SDK_BASE_DIR", tmp_path / "HK_SDK")
+    expected = tmp_path / "HK_SDK" / "HK_SDK_x86_Linux" / "lib" / "linux"
+    expected.mkdir(parents=True)
+
+    assert hikvision_ptz._default_sdk_lib_dir("x86_64") == expected
+
+
+def test_default_sdk_lib_dir_falls_back_to_nested_x86_sdk(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(hikvision_ptz, "SDK_BASE_DIR", tmp_path / "HK_SDK")
+
+    expected = (
+        tmp_path
+        / "HK_SDK"
+        / "HK_SDK_x86_Linux"
+        / "HCNetSDKV6.1.11.5_build20251204_linux64_ZH"
+        / "库文件"
+    )
+    expected.mkdir(parents=True)
+
+    assert hikvision_ptz._default_sdk_lib_dir("x86_64") == expected
+
+
+def test_resolve_sdk_lib_dir_uses_explicit_override() -> None:
+    assert hikvision_ptz.resolve_sdk_lib_dir("/opt/hikvision/lib") == Path("/opt/hikvision/lib")
+
+
+def test_configure_sdk_paths_accepts_openssl_1_1_dependencies(tmp_path) -> None:
+    calls: list[tuple[int, bytes]] = []
+    for name in ("libcrypto.so.1.1", "libssl.so.1.1"):
+        (tmp_path / name).touch()
+
+    class FakeSDKPathConfig:
+        def NET_DVR_SetSDKInitCfg(self, cfg_type, value):  # noqa: ANN001, ANN202
+            if cfg_type in {3, 4}:
+                calls.append((cfg_type, ctypes.cast(value, ctypes.c_char_p).value))
+            return True
+
+    hikvision_ptz._configure_sdk_paths(FakeSDKPathConfig(), tmp_path)
+
+    assert calls == [
+        (3, str(tmp_path / "libcrypto.so.1.1").encode("utf-8")),
+        (4, str(tmp_path / "libssl.so.1.1").encode("utf-8")),
+    ]
 
 
 class FakeSDK:
