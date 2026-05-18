@@ -24,6 +24,7 @@ DEFAULT_CALLBACK_PATH = "/api/v1/recognition/callback"
 DEFAULT_TIMEOUT = 120
 DEFAULT_OUTPUT = Path("results/http_service/test_callback_payload.json")
 DEFAULT_HIK_OUTPUT_DIR = Path("results/http_service/hikvision_captures")
+DEFAULT_HIKVISION_ENV_PATH = Path(__file__).resolve().parent / "recognition_http_server" / "hikvision.env"
 
 SCENE_METER = "meter"
 SCENE_FIRE = "fire"
@@ -103,7 +104,31 @@ class CallbackServer(ThreadingHTTPServer):
         self.callback_path = callback_path
 
 
+def parse_env_file_value(value: str) -> str:
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+        return value[1:-1]
+    return value
+
+
+def load_hikvision_env_file(env_path: Path | None = None) -> None:
+    if env_path is None:
+        env_path = DEFAULT_HIKVISION_ENV_PATH
+    if not env_path.is_file():
+        return
+
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+        key, value = stripped.split("=", 1)
+        key = key.strip()
+        if key in {"HIK_HOST", "HIK_USERNAME", "HIK_PASSWORD", "HIK_PORT", "HIK_CHANNEL", "HIK_LOCAL_IP"}:
+            os.environ.setdefault(key, parse_env_file_value(value))
+
+
 def parse_args() -> argparse.Namespace:
+    load_hikvision_env_file()
     parser = argparse.ArgumentParser(description="End-to-end HTTP test client for the recognition service.")
     parser.add_argument(
         "--server",
@@ -157,10 +182,11 @@ def parse_args() -> argparse.Namespace:
         help="Capture one snapshot from a Hikvision camera and use it as the request image.",
     )
     parser.add_argument("--hik-host", default=os.environ.get("HIK_HOST", ""), help="Hikvision device host.")
-    parser.add_argument("--hik-port", type=int, default=8000, help="Hikvision SDK port.")
+    parser.add_argument("--hik-port", type=int, default=int(os.environ.get("HIK_PORT", "8000")), help="Hikvision SDK port.")
     parser.add_argument("--hik-username", default=os.environ.get("HIK_USERNAME", "admin"))
     parser.add_argument("--hik-password", default=os.environ.get("HIK_PASSWORD", ""))
-    parser.add_argument("--hik-channel", type=int, default=1)
+    parser.add_argument("--hik-channel", type=int, default=int(os.environ.get("HIK_CHANNEL", "1")))
+    parser.add_argument("--hik-local-ip", default=os.environ.get("HIK_LOCAL_IP", ""))
     parser.add_argument(
         "--hik-snapshot-channel",
         type=int,
@@ -289,6 +315,7 @@ def create_hikvision_controller(args: argparse.Namespace):  # noqa: ANN201
             username=args.hik_username,
             password=args.hik_password,
             channel=args.hik_channel,
+            local_ip=args.hik_local_ip,
             snapshot_channel=args.hik_snapshot_channel,
             snapshot_timeout=args.hik_snapshot_timeout,
         )

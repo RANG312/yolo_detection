@@ -1,10 +1,41 @@
 from __future__ import annotations
 
+import sys
 from argparse import Namespace
 from pathlib import Path
 from types import SimpleNamespace
 
 import test_http
+
+
+def test_parse_args_loads_hikvision_env_file(monkeypatch, tmp_path: Path) -> None:  # noqa: ANN001
+    env_path = tmp_path / "hikvision.env"
+    env_path.write_text(
+        "\n".join(
+            [
+                'HIK_HOST="10.42.0.120"',
+                'HIK_USERNAME="operator"',
+                'HIK_PASSWORD="secret"',
+                'HIK_PORT="9000"',
+                'HIK_CHANNEL="2"',
+                'HIK_LOCAL_IP="192.168.2.171"',
+            ]
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(test_http, "DEFAULT_HIKVISION_ENV_PATH", env_path)
+    for name in ("HIK_HOST", "HIK_USERNAME", "HIK_PASSWORD", "HIK_PORT", "HIK_CHANNEL", "HIK_LOCAL_IP"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setattr(sys, "argv", ["test_http.py"])
+
+    args = test_http.parse_args()
+
+    assert args.hik_host == "10.42.0.120"
+    assert args.hik_username == "operator"
+    assert args.hik_password == "secret"
+    assert args.hik_port == 9000
+    assert args.hik_channel == 2
+    assert args.hik_local_ip == "192.168.2.171"
 
 
 def test_resolve_images_requires_images_without_hik_capture() -> None:
