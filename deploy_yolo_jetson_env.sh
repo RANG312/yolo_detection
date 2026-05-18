@@ -6,8 +6,11 @@ RESOURCES_DIR="${SCRIPT_DIR}/resources"
 ARCHIVE_NAME="yolo-jetson.tar.gz"
 ENV_NAME="yolo-jetson"
 ARCHIVE_SOURCE_PATH="${RESOURCES_DIR}/${ARCHIVE_NAME}"
-DEB_NAME="libcudss0-cuda-12_0.7.1.4-1_arm64.deb"
-DEB_SOURCE_PATH="${RESOURCES_DIR}/${DEB_NAME}"
+CUDSS_DEB_NAME="libcudss0-cuda-12_0.7.1.4-1_arm64.deb"
+CUDSS_DEB_SOURCE_PATH="${RESOURCES_DIR}/${CUDSS_DEB_NAME}"
+CUPTI_DEB_NAME="cuda-cupti-12-6_12.6.68-1_arm64.deb"
+CUPTI_DEB_SOURCE_PATH="${RESOURCES_DIR}/${CUPTI_DEB_NAME}"
+HIKVISION_ENV_PATH="${SCRIPT_DIR}/recognition_http_server/hikvision.env"
 SYSTEMD_SERVICE_NAME="ai_detection.service"
 SYSTEMD_SERVICE_PATH="/etc/systemd/system/${SYSTEMD_SERVICE_NAME}"
 
@@ -18,6 +21,113 @@ log() {
 fail() {
   echo "[deploy] ERROR: $*" >&2
   exit 1
+}
+
+env_file_get() {
+  local key="$1"
+  local value=""
+
+  [[ -f "${HIKVISION_ENV_PATH}" ]] || return 1
+  value="$(awk -F= -v key="${key}" '$1 == key {print substr($0, index($0, "=") + 1); exit}' "${HIKVISION_ENV_PATH}")"
+  [[ -n "${value}" ]] || return 1
+  value="${value%\"}"
+  value="${value#\"}"
+  printf '%s' "${value}"
+}
+
+prompt_with_default() {
+  local label="$1"
+  local default_value="$2"
+  local value=""
+
+  if [[ -n "${default_value}" ]]; then
+    read -r -p "${label} [${default_value}]: " value
+    printf '%s' "${value:-${default_value}}"
+  else
+    read -r -p "${label}: " value
+    printf '%s' "${value}"
+  fi
+}
+
+prompt_secret_with_default() {
+  local label="$1"
+  local default_value="$2"
+  local value=""
+  local prompt="${label}"
+
+  if [[ -n "${default_value}" ]]; then
+    prompt="${prompt} [保留已有值请直接回车]"
+  fi
+  read -r -s -p "${prompt}: " value
+  printf '\n' >&2
+  printf '%s' "${value:-${default_value}}"
+}
+
+systemd_env_escape() {
+  local value="$1"
+
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  printf '%s' "${value}"
+}
+
+write_hikvision_env_file() {
+  local host="$1"
+  local username="$2"
+  local password="$3"
+  local port="$4"
+  local channel="$5"
+  local local_ip="$6"
+
+  mkdir -p "$(dirname "${HIKVISION_ENV_PATH}")"
+  cat > "${HIKVISION_ENV_PATH}" <<EOF
+HIK_HOST="$(systemd_env_escape "${host}")"
+HIK_USERNAME="$(systemd_env_escape "${username}")"
+HIK_PASSWORD="$(systemd_env_escape "${password}")"
+HIK_PORT="$(systemd_env_escape "${port}")"
+HIK_CHANNEL="$(systemd_env_escape "${channel}")"
+HIK_LOCAL_IP="$(systemd_env_escape "${local_ip}")"
+EOF
+  chmod 600 "${HIKVISION_ENV_PATH}"
+  log "已写入海康云台配置: ${HIKVISION_ENV_PATH}"
+}
+
+prompt_hikvision_config() {
+  local default_host="${HIK_HOST:-}"
+  local default_username="${HIK_USERNAME:-admin}"
+  local default_password="${HIK_PASSWORD:-}"
+  local default_port="${HIK_PORT:-8000}"
+  local default_channel="${HIK_CHANNEL:-1}"
+  local default_local_ip="${HIK_LOCAL_IP:-}"
+  local host=""
+  local username=""
+  local password=""
+  local port=""
+  local channel=""
+  local local_ip=""
+
+  default_host="$(env_file_get HIK_HOST || printf '%s' "${default_host}")"
+  default_username="$(env_file_get HIK_USERNAME || printf '%s' "${default_username}")"
+  default_password="$(env_file_get HIK_PASSWORD || printf '%s' "${default_password}")"
+  default_port="$(env_file_get HIK_PORT || printf '%s' "${default_port}")"
+  default_channel="$(env_file_get HIK_CHANNEL || printf '%s' "${default_channel}")"
+  default_local_ip="$(env_file_get HIK_LOCAL_IP || printf '%s' "${default_local_ip}")"
+
+  log "请输入海康云台连接配置；直接回车使用方括号中的默认值"
+  host="$(prompt_with_default "海康云台 IP/Host" "${default_host}")"
+  username="$(prompt_with_default "海康云台用户名" "${default_username}")"
+  password="$(prompt_secret_with_default "海康云台密码" "${default_password}")"
+  port="$(prompt_with_default "海康 SDK 端口" "${default_port}")"
+  channel="$(prompt_with_default "海康通道号" "${default_channel}")"
+  local_ip="$(prompt_with_default "本机绑定 IP，可留空" "${default_local_ip}")"
+
+  [[ -n "${host}" ]] || fail "海康云台 IP/Host 不能为空"
+  [[ -n "${username}" ]] || fail "海康云台用户名不能为空"
+  [[ -n "${password}" ]] || fail "海康云台密码不能为空"
+  [[ "${port}" =~ ^[0-9]+$ ]] || fail "海康 SDK 端口必须是数字: ${port}"
+  [[ "${channel}" =~ ^[0-9]+$ ]] || fail "海康通道号必须是数字: ${channel}"
+
+  write_hikvision_env_file "${host}" "${username}" "${password}" "${port}" "${channel}" "${local_ip}"
 }
 
 find_conda_base() {
@@ -158,12 +268,57 @@ ensure_cudss_installed() {
     return 0
   fi
 
-  [[ -f "${DEB_SOURCE_PATH}" ]] || fail "未找到安装包: ${DEB_SOURCE_PATH}"
-  log "未检测到 libcudss，执行 sudo apt install ${DEB_SOURCE_PATH}"
-  sudo apt install -y "${DEB_SOURCE_PATH}" >&2
+  [[ -f "${CUDSS_DEB_SOURCE_PATH}" ]] || fail "未找到安装包: ${CUDSS_DEB_SOURCE_PATH}"
+  log "未检测到 libcudss，执行 sudo apt install ${CUDSS_DEB_SOURCE_PATH}"
+  sudo apt install -y "${CUDSS_DEB_SOURCE_PATH}" >&2
 
   lib_dir="$(find_cudss_library_dir)" || fail "libcudss 安装后仍未找到动态库"
   log "libcudss 安装完成: ${lib_dir}"
+  echo "${lib_dir}"
+}
+
+find_cupti_library_dir() {
+  local path=""
+
+  for path in \
+    /usr/local/cuda/targets/aarch64-linux/lib \
+    /usr/local/cuda/lib64 \
+    /usr/local/cuda/extras/CUPTI/lib64 \
+    /usr/local/cuda-12/targets/aarch64-linux/lib \
+    /usr/local/cuda-12/extras/CUPTI/lib64 \
+    /usr/local/cuda-12.6/targets/aarch64-linux/lib \
+    /usr/local/cuda-12.6/extras/CUPTI/lib64 \
+    /usr/lib/aarch64-linux-gnu; do
+    if compgen -G "${path}/libcupti.so*" >/dev/null; then
+      echo "${path}"
+      return 0
+    fi
+  done
+
+  path="$(ldconfig -p 2>/dev/null | awk '/libcupti\.so/ {print $NF; exit}')"
+  if [[ -n "${path}" ]]; then
+    dirname "${path}"
+    return 0
+  fi
+
+  return 1
+}
+
+ensure_cupti_installed() {
+  local lib_dir=""
+
+  if lib_dir="$(find_cupti_library_dir)"; then
+    log "已检测到 libcupti: ${lib_dir}"
+    echo "${lib_dir}"
+    return 0
+  fi
+
+  [[ -f "${CUPTI_DEB_SOURCE_PATH}" ]] || fail "未找到安装包: ${CUPTI_DEB_SOURCE_PATH}"
+  log "未检测到 libcupti，执行 sudo apt install ${CUPTI_DEB_SOURCE_PATH}"
+  sudo apt install -y "${CUPTI_DEB_SOURCE_PATH}" >&2
+
+  lib_dir="$(find_cupti_library_dir)" || fail "libcupti 安装后仍未找到动态库"
+  log "libcupti 安装完成: ${lib_dir}"
   echo "${lib_dir}"
 }
 
@@ -199,23 +354,31 @@ find_hik_sdk_library_dir() {
 
 write_conda_hooks() {
   local env_prefix="$1"
-  local lib_dir="$2"
+  local cudss_lib_dir="$2"
+  local cupti_lib_dir="$3"
   local activate_dir="${env_prefix}/etc/conda/activate.d"
   local deactivate_dir="${env_prefix}/etc/conda/deactivate.d"
-  local activate_hook="${activate_dir}/libcudss.sh"
-  local deactivate_hook="${deactivate_dir}/libcudss.sh"
+  local activate_hook="${activate_dir}/cuda-runtime-libs.sh"
+  local deactivate_hook="${deactivate_dir}/cuda-runtime-libs.sh"
 
-  [[ -d "${lib_dir}" ]] || fail "Invalid libcudss path: ${lib_dir}"
+  [[ -d "${cudss_lib_dir}" ]] || fail "Invalid libcudss path: ${cudss_lib_dir}"
+  [[ -d "${cupti_lib_dir}" ]] || fail "Invalid libcupti path: ${cupti_lib_dir}"
 
   mkdir -p "${activate_dir}" "${deactivate_dir}"
+  rm -f "${activate_dir}/libcudss.sh" "${deactivate_dir}/libcudss.sh"
 
   cat > "${activate_hook}" <<EOF
 #!/usr/bin/env bash
 export _YOLO_JETSON_OLD_LD_LIBRARY_PATH="\${LD_LIBRARY_PATH:-}"
-case ":\${LD_LIBRARY_PATH:-}:" in
-  *:"${lib_dir}":*) ;;
-  *) export LD_LIBRARY_PATH="${lib_dir}\${LD_LIBRARY_PATH:+:\${LD_LIBRARY_PATH}}" ;;
-esac
+for _YOLO_JETSON_LIB_DIR in \\
+  "${cudss_lib_dir}" \\
+  "${cupti_lib_dir}"; do
+  case ":\${LD_LIBRARY_PATH:-}:" in
+    *:"\${_YOLO_JETSON_LIB_DIR}":*) ;;
+    *) export LD_LIBRARY_PATH="\${_YOLO_JETSON_LIB_DIR}\${LD_LIBRARY_PATH:+:\${LD_LIBRARY_PATH}}" ;;
+  esac
+done
+unset _YOLO_JETSON_LIB_DIR
 EOF
 
   cat > "${deactivate_hook}" <<'EOF'
@@ -277,6 +440,7 @@ UMask=0002
 Environment=PYTHONNOUSERSITE=1
 Environment=HIK_SDK_LIB_DIR=${hik_sdk_lib_dir}
 Environment=LD_LIBRARY_PATH=${hik_sdk_lib_dir}
+EnvironmentFile=${working_dir}/recognition_http_server/hikvision.env
 ExecStart=/bin/bash -lc 'source "${conda_sh}" && conda activate "${env_prefix}" && exec python "${server_script}"'
 Restart=always
 RestartSec=3
@@ -330,6 +494,7 @@ main() {
   local archive_path=""
   local env_prefix=""
   local cudss_lib_dir=""
+  local cupti_lib_dir=""
   local hik_sdk_lib_dir=""
   local env_was_unpacked=0
   local run_user="root"
@@ -358,10 +523,13 @@ main() {
 
   cudss_lib_dir="$(ensure_cudss_installed)"
   [[ -d "${cudss_lib_dir}" ]] || fail "Invalid libcudss path: ${cudss_lib_dir}"
-  write_conda_hooks "${CONDA_PREFIX}" "${cudss_lib_dir}"
+  cupti_lib_dir="$(ensure_cupti_installed)"
+  [[ -d "${cupti_lib_dir}" ]] || fail "Invalid libcupti path: ${cupti_lib_dir}"
+  write_conda_hooks "${CONDA_PREFIX}" "${cudss_lib_dir}" "${cupti_lib_dir}"
 
   hik_sdk_lib_dir="$(find_hik_sdk_library_dir)"
   log "检测到海康 SDK 动态库目录: ${hik_sdk_lib_dir}"
+  prompt_hikvision_config
 
   log "重新激活环境以立即应用新配置"
   set +u
@@ -377,6 +545,8 @@ main() {
 
   log "部署完成"
   log "CONDA_PREFIX=${CONDA_PREFIX}"
+  log "CUDSS_LIB_DIR=${cudss_lib_dir}"
+  log "CUPTI_LIB_DIR=${cupti_lib_dir}"
   log "HIK_SDK_LIB_DIR=${hik_sdk_lib_dir}"
   log "LD_LIBRARY_PATH=${LD_LIBRARY_PATH:-}"
 }

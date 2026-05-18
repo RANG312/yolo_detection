@@ -108,10 +108,19 @@ def parse_args() -> argparse.Namespace:
         help="Enable Hikvision PTZ auto-alignment before pointer meter ROI retry.",
     )
     parser.add_argument("--ptz-host", default=os.environ.get("HIK_HOST", DEFAULT_PTZ_HOST), help="Hikvision device host.")
-    parser.add_argument("--ptz-port", type=int, default=DEFAULT_PTZ_PORT, help="Hikvision SDK port.")
+    parser.add_argument(
+        "--ptz-port",
+        type=int,
+        default=int(os.environ.get("HIK_PORT", DEFAULT_PTZ_PORT)),
+        help="Hikvision SDK port.",
+    )
     parser.add_argument("--ptz-username", default=os.environ.get("HIK_USERNAME", DEFAULT_PTZ_USERNAME))
     parser.add_argument("--ptz-password", default=os.environ.get("HIK_PASSWORD", DEFAULT_PTZ_PASSWORD))
-    parser.add_argument("--ptz-channel", type=int, default=DEFAULT_PTZ_CHANNEL)
+    parser.add_argument(
+        "--ptz-channel",
+        type=int,
+        default=int(os.environ.get("HIK_CHANNEL", DEFAULT_PTZ_CHANNEL)),
+    )
     parser.add_argument("--ptz-local-ip", default=os.environ.get("HIK_LOCAL_IP", ""))
     parser.add_argument(
         "--ptz-sdk-lib-dir",

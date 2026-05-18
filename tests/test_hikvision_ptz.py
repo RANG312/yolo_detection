@@ -286,3 +286,66 @@ def test_controller_reuses_sdk_session_until_closed(monkeypatch) -> None:
     controller.close()
 
     assert calls == ["configure", "init", ("bind", "192.168.1.188"), ("logout", 7), "cleanup"]
+
+
+def test_capture_image_uses_explicit_snapshot_channel(monkeypatch) -> None:
+    captured = {}
+
+    class FakeResponse:
+        content = b"jpeg"
+
+        def raise_for_status(self) -> None:
+            captured["raised"] = True
+
+    def fake_get(url, auth, timeout):  # noqa: ANN001, ANN202
+        captured["url"] = url
+        captured["timeout"] = timeout
+        return FakeResponse()
+
+    monkeypatch.setattr(hikvision_ptz.requests, "get", fake_get)
+    monkeypatch.setattr(hikvision_ptz.cv2, "imdecode", lambda buffer, flags: object())
+
+    controller = hikvision_ptz.HikvisionPTZController(
+        HikvisionPTZConfig(host="10.42.0.120", password="secret", channel=1, snapshot_channel=102)
+    )
+
+    assert controller.capture_image() is not None
+    assert captured == {
+        "url": "http://10.42.0.120/ISAPI/Streaming/channels/102/picture",
+        "timeout": 5.0,
+        "raised": True,
+    }
+
+
+def test_capture_image_falls_back_to_secondary_stream_when_primary_is_unavailable(monkeypatch) -> None:
+    urls = []
+
+    class FakeResponse:
+        def __init__(self, status_code: int) -> None:
+            self.status_code = status_code
+            self.content = b"jpeg"
+
+        def raise_for_status(self) -> None:
+            if self.status_code >= 400:
+                error = hikvision_ptz.requests.HTTPError(f"{self.status_code} error")
+                error.response = self
+                raise error
+
+    def fake_get(url, auth, timeout):  # noqa: ANN001, ANN202
+        urls.append(url)
+        if url.endswith("/101/picture"):
+            return FakeResponse(503)
+        return FakeResponse(200)
+
+    monkeypatch.setattr(hikvision_ptz.requests, "get", fake_get)
+    monkeypatch.setattr(hikvision_ptz.cv2, "imdecode", lambda buffer, flags: object())
+
+    controller = hikvision_ptz.HikvisionPTZController(
+        HikvisionPTZConfig(host="10.42.0.120", password="secret", channel=1)
+    )
+
+    assert controller.capture_image() is not None
+    assert urls == [
+        "http://10.42.0.120/ISAPI/Streaming/channels/101/picture",
+        "http://10.42.0.120/ISAPI/Streaming/channels/102/picture",
+    ]

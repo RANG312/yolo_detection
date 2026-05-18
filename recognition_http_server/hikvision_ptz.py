@@ -201,6 +201,7 @@ class HikvisionPTZConfig:
     username: str = "admin"
     password: str = ""
     channel: int = 1
+    snapshot_channel: int | None = None
     local_ip: str = ""
     sdk_lib_dir: Path = DEFAULT_LIB_DIR
     tilt_min_deg: float = 0.0
@@ -391,13 +392,30 @@ class HikvisionPTZController:
     def capture_image(self) -> np.ndarray:
         if not self.config.host or not self.config.password:
             raise ValueError("Hikvision snapshot requires host and password.")
-        url = f"http://{self.config.host}/ISAPI/Streaming/channels/{self.config.channel}01/picture"
-        response = requests.get(
-            url,
-            auth=HTTPDigestAuth(self.config.username, self.config.password),
-            timeout=self.config.snapshot_timeout,
-        )
-        response.raise_for_status()
+        if self.config.snapshot_channel is not None:
+            snapshot_channels = [self.config.snapshot_channel]
+        else:
+            snapshot_channels = [int(f"{self.config.channel}01"), int(f"{self.config.channel}02")]
+
+        response = None
+        for index, snapshot_channel in enumerate(snapshot_channels):
+            url = f"http://{self.config.host}/ISAPI/Streaming/channels/{snapshot_channel}/picture"
+            response = requests.get(
+                url,
+                auth=HTTPDigestAuth(self.config.username, self.config.password),
+                timeout=self.config.snapshot_timeout,
+            )
+            try:
+                response.raise_for_status()
+                break
+            except requests.HTTPError as exc:
+                is_last_channel = index == len(snapshot_channels) - 1
+                status_code = getattr(exc.response, "status_code", None)
+                if is_last_channel or status_code != 503:
+                    raise
+
+        if response is None:
+            raise RuntimeError("Hikvision snapshot did not return a response.")
         image = cv2.imdecode(np.frombuffer(response.content, dtype=np.uint8), cv2.IMREAD_COLOR)
         if image is None:
             raise RuntimeError("Hikvision snapshot response is not a valid image.")

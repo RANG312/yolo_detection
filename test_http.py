@@ -161,6 +161,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--hik-username", default=os.environ.get("HIK_USERNAME", "admin"))
     parser.add_argument("--hik-password", default=os.environ.get("HIK_PASSWORD", ""))
     parser.add_argument("--hik-channel", type=int, default=1)
+    parser.add_argument(
+        "--hik-snapshot-channel",
+        type=int,
+        default=None,
+        help="HTTP snapshot channel. Defaults to <hik-channel>01, e.g. channel 1 -> 101.",
+    )
     parser.add_argument("--hik-snapshot-timeout", type=float, default=5.0, help="Hikvision snapshot timeout in seconds.")
     parser.add_argument(
         "--hik-output-dir",
@@ -283,6 +289,7 @@ def create_hikvision_controller(args: argparse.Namespace):  # noqa: ANN201
             username=args.hik_username,
             password=args.hik_password,
             channel=args.hik_channel,
+            snapshot_channel=args.hik_snapshot_channel,
             snapshot_timeout=args.hik_snapshot_timeout,
         )
     )

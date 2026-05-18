@@ -35,6 +35,7 @@ requirements.txt
 !HK_SDK/**/*.so
 !HK_SDK/**/*.so.*
 !HK_SDK/**/HCNetSDK_Log_Switch.xml
+recognition_http_server/hikvision.env
 
 setup.py
 ultralytics.egg-info
