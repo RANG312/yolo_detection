@@ -39,6 +39,7 @@ from recognition_http_server.constants import (
     DEFAULT_PTZ_VERTICAL_FOV_DEG,
     DEFAULT_PTZ_ZOOM_ENABLED,
     DEFAULT_PTZ_ZOOM_FOCUS_TIMEOUT,
+    DEFAULT_PTZ_ZOOM_MAX_RATIO,
     DEFAULT_PTZ_ZOOM_MAX_PASSES,
     DEFAULT_PTZ_ZOOM_NUDGE_SECONDS,
     DEFAULT_PTZ_ZOOM_NUDGE_SPEED,
@@ -162,4 +163,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--ptz-zoom-nudge-seconds", type=float, default=DEFAULT_PTZ_ZOOM_NUDGE_SECONDS)
     parser.add_argument("--ptz-zoom-nudge-steps", type=int, default=DEFAULT_PTZ_ZOOM_NUDGE_STEPS)
     parser.add_argument("--ptz-zoom-focus-timeout", type=float, default=DEFAULT_PTZ_ZOOM_FOCUS_TIMEOUT)
+    parser.add_argument(
+        "--ptz-zoom-max-ratio",
+        type=float,
+        default=DEFAULT_PTZ_ZOOM_MAX_RATIO,
+        help="Optional maximum zoom ratio. Use 0 to estimate from SDK FOV range.",
+    )
     return parser.parse_args()

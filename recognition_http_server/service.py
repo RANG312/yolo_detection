@@ -97,6 +97,7 @@ class RecognitionService:
                     zoom_nudge_seconds=getattr(config, "ptz_zoom_nudge_seconds", 0.6),
                     zoom_nudge_steps=getattr(config, "ptz_zoom_nudge_steps", 1),
                     zoom_focus_timeout=getattr(config, "ptz_zoom_focus_timeout", 2.0),
+                    zoom_max_ratio=getattr(config, "ptz_zoom_max_ratio", 0.0),
                 ),
                 logger=self.logger,
             )

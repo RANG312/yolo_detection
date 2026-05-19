@@ -14,15 +14,24 @@ from recognition_http_server.ptz_alignment import (
 
 
 class FakeController:
-    def __init__(self) -> None:
+    def __init__(self, current_zoom: float | None = None, max_zoom: float | None = None) -> None:
         self.requests: list[PTZAlignmentRequest] = []
         self.zoom_requests: list[PTZZoomRequest] = []
+        self.current_zoom = current_zoom
+        self.max_zoom = max_zoom
 
     def align(self, request: PTZAlignmentRequest) -> None:
         self.requests.append(request)
 
     def zoom(self, request: PTZZoomRequest) -> None:
         self.zoom_requests.append(request)
+
+    def read_zoom_limits(self):
+        if self.current_zoom is None or self.max_zoom is None:
+            return None
+        from recognition_http_server.ptz_alignment import PTZZoomLimits
+
+        return PTZZoomLimits(current_zoom=self.current_zoom, max_zoom=self.max_zoom)
 
 
 def test_compute_alignment_request_maps_image_offset_to_fov_degrees() -> None:
@@ -124,3 +133,25 @@ def test_maybe_zoom_gauge_calls_controller_when_size_is_outside_tolerance() -> N
     assert request.should_zoom is True
     assert request.zoom_direction == "in"
     assert controller.zoom_requests == [request]
+
+
+def test_maybe_zoom_gauge_skips_zoom_in_when_current_zoom_is_at_maximum() -> None:
+    controller = FakeController(current_zoom=32.0, max_zoom=32.0)
+    config = PTZAlignmentConfig(enabled=True, zoom_enabled=True, zoom_target_height_ratio=0.8)
+
+    request = maybe_zoom_gauge(
+        controller,
+        config,
+        image_shape=(1000, 2000, 3),
+        gauge_box=np.array([500, 350, 1500, 650], dtype=np.float64),
+    )
+
+    assert request is not None
+    assert request.current_height_ratio == 0.3
+    assert request.target_height_ratio == 0.8
+    assert request.zoom_direction == "in"
+    assert request.should_zoom is False
+    assert request.current_zoom == 32.0
+    assert request.max_zoom == 32.0
+    assert request.zoom_limit_reached is True
+    assert controller.zoom_requests == []

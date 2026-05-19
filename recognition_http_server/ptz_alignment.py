@@ -52,6 +52,16 @@ class PTZZoomRequest:
     ratio_tolerance: float
     zoom_direction: str | None = None
     should_zoom: bool = False
+    current_zoom: float | None = None
+    max_zoom: float | None = None
+    zoom_limit_reached: bool = False
+
+
+@dataclass(frozen=True)
+class PTZZoomLimits:
+    current_zoom: float
+    max_zoom: float
+    min_zoom: float = 1.0
 
 
 class PTZAlignmentController(Protocol):
@@ -201,9 +211,45 @@ def maybe_zoom_gauge(
         target_height_ratio=config.zoom_target_height_ratio,
         ratio_tolerance=config.zoom_ratio_tolerance,
     )
+    limits = _read_zoom_limits(controller)
+    if request.should_zoom and limits is not None:
+        request = _apply_zoom_limits(request, limits)
     if request.should_zoom and controller is not None and hasattr(controller, "zoom"):
         controller.zoom(request)
     return request
+
+
+def _read_zoom_limits(controller: PTZAlignmentController | None) -> PTZZoomLimits | None:
+    if controller is None or not hasattr(controller, "read_zoom_limits"):
+        return None
+    limits = controller.read_zoom_limits()
+    if limits is None:
+        return None
+    return limits
+
+
+def _apply_zoom_limits(request: PTZZoomRequest, limits: PTZZoomLimits) -> PTZZoomRequest:
+    current_zoom = float(limits.current_zoom)
+    max_zoom = float(limits.max_zoom)
+    min_zoom = float(limits.min_zoom)
+    limit_reached = (
+        (request.zoom_direction == "in" and current_zoom >= max_zoom)
+        or (request.zoom_direction == "out" and current_zoom <= min_zoom)
+    )
+    return PTZZoomRequest(
+        image_width=request.image_width,
+        image_height=request.image_height,
+        gauge_box=request.gauge_box,
+        gauge_height_px=request.gauge_height_px,
+        current_height_ratio=request.current_height_ratio,
+        target_height_ratio=request.target_height_ratio,
+        ratio_tolerance=request.ratio_tolerance,
+        zoom_direction=request.zoom_direction,
+        should_zoom=request.should_zoom and not limit_reached,
+        current_zoom=current_zoom,
+        max_zoom=max_zoom,
+        zoom_limit_reached=limit_reached,
+    )
 
 
 def _clamp(value: float, minimum: float, maximum: float) -> float:

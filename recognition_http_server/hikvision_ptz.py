@@ -13,7 +13,7 @@ import numpy as np
 import requests
 from requests.auth import HTTPDigestAuth
 
-from recognition_http_server.ptz_alignment import PTZAlignmentRequest
+from recognition_http_server.ptz_alignment import PTZAlignmentRequest, PTZZoomLimits
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -217,6 +217,7 @@ class HikvisionPTZConfig:
     zoom_nudge_seconds: float = 0.3
     zoom_nudge_steps: int = 1
     zoom_focus_timeout: float = 2.0
+    zoom_max_ratio: float = 0.0
     snapshot_timeout: float = 5.0
 
 
@@ -236,6 +237,15 @@ class HikvisionFieldOfView:
     min_vertical_deg: float
     max_vertical_deg: float
     zoom: float
+
+    @property
+    def max_zoom(self) -> float:
+        return _max_zoom_from_fov(
+            self.min_horizontal_deg,
+            self.max_horizontal_deg,
+            self.min_vertical_deg,
+            self.max_vertical_deg,
+        )
 
 
 class HikvisionPTZController:
@@ -352,6 +362,20 @@ class HikvisionPTZController:
             try:
                 sdk, user_id = self._ensure_session_unlocked()
                 return _read_gis_fov(sdk, user_id, self.config.channel)
+            except Exception:
+                self._close_unlocked()
+                raise
+
+    def read_zoom_limits(self) -> PTZZoomLimits:
+        if not self.config.host or not self.config.password:
+            raise ValueError("Hikvision zoom limit reading requires host and password.")
+
+        with self._lock:
+            try:
+                sdk, user_id = self._ensure_session_unlocked()
+                fov = _read_gis_fov(sdk, user_id, self.config.channel)
+                max_zoom = float(self.config.zoom_max_ratio) if self.config.zoom_max_ratio > 0.0 else float(fov.max_zoom)
+                return PTZZoomLimits(current_zoom=float(fov.zoom), max_zoom=max_zoom)
             except Exception:
                 self._close_unlocked()
                 raise
@@ -569,6 +593,22 @@ def _read_gis_fov(sdk: ctypes.CDLL, user_id: int, channel: int) -> HikvisionFiel
 
 def _is_valid_fov(fov: HikvisionFieldOfView) -> bool:
     return 0.0 < fov.horizontal_deg <= 180.0 and 0.0 < fov.vertical_deg <= 180.0
+
+
+def _max_zoom_from_fov(
+    min_horizontal_deg: float,
+    max_horizontal_deg: float,
+    min_vertical_deg: float,
+    max_vertical_deg: float,
+) -> float:
+    ratios = []
+    if min_horizontal_deg > 0.0 and max_horizontal_deg > 0.0:
+        ratios.append(max_horizontal_deg / min_horizontal_deg)
+    if min_vertical_deg > 0.0 and max_vertical_deg > 0.0:
+        ratios.append(max_vertical_deg / min_vertical_deg)
+    if not ratios:
+        return 1.0
+    return max(1.0, max(ratios))
 
 
 def _set_ptz(

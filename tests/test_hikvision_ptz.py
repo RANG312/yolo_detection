@@ -3,6 +3,8 @@ from __future__ import annotations
 import ctypes
 from pathlib import Path
 
+import pytest
+
 import recognition_http_server.hikvision_ptz as hikvision_ptz
 from recognition_http_server.hikvision_ptz import HikvisionFieldOfView, HikvisionPTZConfig, PTZPosition
 
@@ -190,15 +192,14 @@ def test_read_gis_fov_returns_current_optical_field_of_view() -> None:
 
     assert sdk.command == hikvision_ptz.NET_DVR_GET_GISINFO
     assert sdk.channel == 1
-    assert fov == HikvisionFieldOfView(
-        horizontal_deg=2.9,
-        vertical_deg=1.63,
-        min_horizontal_deg=2.9,
-        max_horizontal_deg=54.93,
-        min_vertical_deg=1.63,
-        max_vertical_deg=32.6,
-        zoom=25.0,
-    )
+    assert fov.horizontal_deg == pytest.approx(2.9)
+    assert fov.vertical_deg == pytest.approx(1.63)
+    assert fov.min_horizontal_deg == pytest.approx(2.9)
+    assert fov.max_horizontal_deg == pytest.approx(54.93)
+    assert fov.min_vertical_deg == pytest.approx(1.63)
+    assert fov.max_vertical_deg == pytest.approx(32.6)
+    assert fov.zoom == pytest.approx(25.0)
+    assert round(fov.max_zoom, 2) == 20.0
 
 
 def test_controller_can_read_and_restore_absolute_ptz_position(monkeypatch) -> None:
@@ -286,6 +287,44 @@ def test_controller_reuses_sdk_session_until_closed(monkeypatch) -> None:
     controller.close()
 
     assert calls == ["configure", "init", ("bind", "192.168.1.188"), ("logout", 7), "cleanup"]
+
+
+def test_controller_read_zoom_limits_prefers_configured_max_zoom_ratio(monkeypatch) -> None:
+    calls = []
+
+    class FakePersistentSDK:
+        def NET_DVR_Init(self) -> bool:
+            calls.append("init")
+            return True
+
+        def NET_DVR_GetLastError(self) -> int:
+            return 0
+
+        def NET_DVR_Logout(self, user_id):  # noqa: ANN001, ANN202
+            calls.append(("logout", user_id))
+            return True
+
+        def NET_DVR_Cleanup(self):  # noqa: ANN202
+            calls.append("cleanup")
+            return True
+
+    sdk = FakePersistentSDK()
+    fov = HikvisionFieldOfView(6.36, 3.58, 2.9, 54.93, 1.63, 32.6, 19.8)
+
+    monkeypatch.setattr(hikvision_ptz, "_load_sdk", lambda lib_dir: sdk)
+    monkeypatch.setattr(hikvision_ptz, "_configure_sdk_paths", lambda sdk_arg, lib_dir: calls.append("configure"))
+    monkeypatch.setattr(hikvision_ptz, "_bind_local_ip", lambda sdk_arg, local_ip: calls.append(("bind", local_ip)))
+    monkeypatch.setattr(hikvision_ptz, "_login", lambda sdk_arg, config: 7)
+    monkeypatch.setattr(hikvision_ptz, "_read_gis_fov", lambda sdk_arg, user_id, channel: fov)
+
+    controller = hikvision_ptz.HikvisionPTZController(
+        HikvisionPTZConfig(host="192.168.1.64", password="secret", zoom_max_ratio=25.0)
+    )
+
+    limits = controller.read_zoom_limits()
+
+    assert limits.current_zoom == 19.8
+    assert limits.max_zoom == 25.0
 
 
 def test_capture_image_uses_explicit_snapshot_channel(monkeypatch) -> None:
