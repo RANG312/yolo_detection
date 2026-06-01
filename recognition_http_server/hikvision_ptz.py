@@ -209,6 +209,8 @@ class HikvisionPTZConfig:
     settle_seconds: float = 0.3
     nudge_speed: int = 1
     nudge_degrees_per_second: float = 8.0
+    pan_nudge_degrees_per_second: float | None = None
+    tilt_nudge_degrees_per_second: float | None = None
     nudge_min_seconds: float = 0.05
     nudge_max_seconds: float = 1.0
     nudge_max_steps: int = 2
@@ -366,7 +368,7 @@ class HikvisionPTZController:
                 self._close_unlocked()
                 raise
 
-    def read_zoom_limits(self) -> PTZZoomLimits:
+    def read_zoom_limits(self) -> PTZZoomLimits | None:
         if not self.config.host or not self.config.password:
             raise ValueError("Hikvision zoom limit reading requires host and password.")
 
@@ -374,7 +376,12 @@ class HikvisionPTZController:
             try:
                 sdk, user_id = self._ensure_session_unlocked()
                 fov = _read_gis_fov(sdk, user_id, self.config.channel)
-                max_zoom = float(self.config.zoom_max_ratio) if self.config.zoom_max_ratio > 0.0 else float(fov.max_zoom)
+                if self.config.zoom_max_ratio > 0.0:
+                    max_zoom = float(self.config.zoom_max_ratio)
+                elif not _has_zoom_fov_range(fov):
+                    return None
+                else:
+                    max_zoom = float(fov.max_zoom)
                 return PTZZoomLimits(current_zoom=float(fov.zoom), max_zoom=max_zoom)
             except Exception:
                 self._close_unlocked()
@@ -595,6 +602,13 @@ def _is_valid_fov(fov: HikvisionFieldOfView) -> bool:
     return 0.0 < fov.horizontal_deg <= 180.0 and 0.0 < fov.vertical_deg <= 180.0
 
 
+def _has_zoom_fov_range(fov: HikvisionFieldOfView) -> bool:
+    return (
+        (fov.min_horizontal_deg > 0.0 and fov.max_horizontal_deg > fov.min_horizontal_deg)
+        or (fov.min_vertical_deg > 0.0 and fov.max_vertical_deg > fov.min_vertical_deg)
+    )
+
+
 def _max_zoom_from_fov(
     min_horizontal_deg: float,
     max_horizontal_deg: float,
@@ -638,11 +652,19 @@ def _nudge_by_delta(
 ) -> None:
     if abs(pan_delta_deg) > 1e-6:
         direction = "right" if pan_delta_deg > 0 else "left"
-        for duration in _durations_for_degrees(abs(pan_delta_deg), config):
+        pan_dps = config.pan_nudge_degrees_per_second or config.nudge_degrees_per_second
+        for duration in _durations_for_degrees(abs(pan_delta_deg), config, degrees_per_second=pan_dps):
             _nudge_ptz(sdk, user_id, config.channel, direction, duration, config.nudge_speed)
     if abs(tilt_delta_deg) > 1e-6:
         direction = "up" if tilt_delta_deg > 0 else "down"
-        for duration in _durations_for_degrees(abs(tilt_delta_deg), config, scale=config.tilt_nudge_scale):
+        tilt_dps = config.tilt_nudge_degrees_per_second or config.nudge_degrees_per_second
+        tilt_scale = 1.0 if config.tilt_nudge_degrees_per_second else config.tilt_nudge_scale
+        for duration in _durations_for_degrees(
+            abs(tilt_delta_deg),
+            config,
+            degrees_per_second=tilt_dps,
+            scale=tilt_scale,
+        ):
             _nudge_ptz(sdk, user_id, config.channel, direction, duration, config.nudge_speed)
 
 
@@ -663,15 +685,21 @@ def _nudge_zoom(sdk: ctypes.CDLL, user_id: int, config: HikvisionPTZConfig, dire
         )
 
 
-def _durations_for_degrees(degrees: float, config: HikvisionPTZConfig, scale: float = 1.0) -> list[float]:
-    if config.nudge_degrees_per_second <= 0:
-        raise ValueError("nudge_degrees_per_second must be positive.")
+def _durations_for_degrees(
+    degrees: float,
+    config: HikvisionPTZConfig,
+    degrees_per_second: float | None = None,
+    scale: float = 1.0,
+) -> list[float]:
+    degrees_per_second = degrees_per_second or config.nudge_degrees_per_second
+    if degrees_per_second <= 0:
+        raise ValueError("nudge degrees per second must be positive.")
     if config.nudge_max_steps < 1:
         raise ValueError("nudge_max_steps must be at least 1.")
     if scale <= 0:
         raise ValueError("nudge duration scale must be positive.")
     remaining = _clamp(
-        float(degrees) / config.nudge_degrees_per_second,
+        float(degrees) / degrees_per_second,
         config.nudge_min_seconds,
         config.nudge_max_seconds * config.nudge_max_steps,
     )

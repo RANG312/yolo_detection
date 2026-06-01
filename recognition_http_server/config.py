@@ -25,10 +25,12 @@ from recognition_http_server.constants import (
     DEFAULT_PTZ_HOST,
     DEFAULT_PTZ_HORIZONTAL_FOV_DEG,
     DEFAULT_PTZ_PASSWORD,
+    DEFAULT_PTZ_PAN_NUDGE_DEGREES_PER_SECOND,
     DEFAULT_PTZ_PORT,
     DEFAULT_PTZ_SETTLE_SECONDS,
     DEFAULT_PTZ_TILT_MAX_DEG,
     DEFAULT_PTZ_TILT_MIN_DEG,
+    DEFAULT_PTZ_TILT_NUDGE_DEGREES_PER_SECOND,
     DEFAULT_PTZ_NUDGE_DEGREES_PER_SECOND,
     DEFAULT_PTZ_NUDGE_MAX_SECONDS,
     DEFAULT_PTZ_NUDGE_MAX_STEPS,
@@ -138,6 +140,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--ptz-settle-seconds", type=float, default=DEFAULT_PTZ_SETTLE_SECONDS)
     parser.add_argument("--ptz-nudge-speed", type=int, default=DEFAULT_PTZ_NUDGE_SPEED)
     parser.add_argument("--ptz-nudge-degrees-per-second", type=float, default=DEFAULT_PTZ_NUDGE_DEGREES_PER_SECOND)
+    parser.add_argument("--ptz-pan-nudge-degrees-per-second", type=float, default=DEFAULT_PTZ_PAN_NUDGE_DEGREES_PER_SECOND)
+    parser.add_argument("--ptz-tilt-nudge-degrees-per-second", type=float, default=DEFAULT_PTZ_TILT_NUDGE_DEGREES_PER_SECOND)
     parser.add_argument("--ptz-nudge-min-seconds", type=float, default=DEFAULT_PTZ_NUDGE_MIN_SECONDS)
     parser.add_argument("--ptz-nudge-max-seconds", type=float, default=DEFAULT_PTZ_NUDGE_MAX_SECONDS)
     parser.add_argument("--ptz-nudge-max-steps", type=int, default=DEFAULT_PTZ_NUDGE_MAX_STEPS)

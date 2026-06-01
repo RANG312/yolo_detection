@@ -6,13 +6,17 @@ from __future__ import annotations
 import argparse
 import ctypes
 import os
+import platform
 import time
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SDK_ROOT = ROOT / "HK_SDK_x86_Linux" / "HCNetSDKV6.1.11.5_build20251204_linux64_ZH"
-LIB_DIR = SDK_ROOT / "库文件"
+SDK_BASE_DIR = ROOT / "HK_SDK"
+if platform.machine().lower() in {"aarch64", "arm64"}:
+    LIB_DIR = SDK_BASE_DIR / "HK_SDK_arm64_Linux" / "lib" / "linux"
+else:
+    LIB_DIR = SDK_BASE_DIR / "HK_SDK_x86_Linux" / "HCNetSDKV6.1.11.5_build20251204_linux64_ZH" / "库文件"
 
 NET_DVR_GET_PTZPOS = 293
 NET_DVR_GET_GISINFO = 3711
@@ -291,8 +295,22 @@ def configure_sdk_paths(sdk: ctypes.CDLL) -> None:
     sdk_path = NET_DVR_LOCAL_SDK_PATH()
     sdk_path.sPath = lib_path
     sdk.NET_DVR_SetSDKInitCfg(2, ctypes.byref(sdk_path))
-    sdk.NET_DVR_SetSDKInitCfg(3, ctypes.create_string_buffer(lib_path + b"/libcrypto.so.3"))
-    sdk.NET_DVR_SetSDKInitCfg(4, ctypes.create_string_buffer(lib_path + b"/libssl.so.3"))
+    sdk.NET_DVR_SetSDKInitCfg(
+        3,
+        ctypes.create_string_buffer(str(_first_existing("libcrypto.so.3", "libcrypto.so.1.1", "libcrypto.so")).encode("utf-8")),
+    )
+    sdk.NET_DVR_SetSDKInitCfg(
+        4,
+        ctypes.create_string_buffer(str(_first_existing("libssl.so.3", "libssl.so.1.1", "libssl.so")).encode("utf-8")),
+    )
+
+
+def _first_existing(*names: str) -> Path:
+    for name in names:
+        path = LIB_DIR / name
+        if path.exists():
+            return path.resolve()
+    raise FileNotFoundError(f"missing Hikvision SDK dependency in {LIB_DIR}: {', '.join(names)}")
 
 
 def bind_local_ip(sdk: ctypes.CDLL, local_ip: str) -> bool:

@@ -89,6 +89,8 @@ class RecognitionService:
                     settle_seconds=getattr(config, "ptz_settle_seconds", 0.3),
                     nudge_speed=getattr(config, "ptz_nudge_speed", 1),
                     nudge_degrees_per_second=getattr(config, "ptz_nudge_degrees_per_second", 8.0),
+                    pan_nudge_degrees_per_second=getattr(config, "ptz_pan_nudge_degrees_per_second", None),
+                    tilt_nudge_degrees_per_second=getattr(config, "ptz_tilt_nudge_degrees_per_second", None),
                     nudge_min_seconds=getattr(config, "ptz_nudge_min_seconds", 0.05),
                     nudge_max_seconds=getattr(config, "ptz_nudge_max_seconds", 1.0),
                     nudge_max_steps=getattr(config, "ptz_nudge_max_steps", 2),

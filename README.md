@@ -165,6 +165,7 @@ python recognition_http_server/app.py
 - `--ptz-align-max-delta-deg`：单次 pan/tilt 修正的最大角度
 - `--ptz-align-max-passes`：最多执行几轮“检测 gauge -> 调整云台 -> 重新抓图”
 - `--ptz-nudge-*`：云台连续控制参数，用于把角度修正换算成 SDK start/stop 控制时长
+- `--ptz-pan-nudge-degrees-per-second` / `--ptz-tilt-nudge-degrees-per-second`：当前云台和 speed 档位下实测的水平、垂直角速度；切换云台型号时优先调整这两个参数
 - `--ptz-zoom-enabled` / `--no-ptz-zoom-enabled`：启用或关闭对齐后的光学变焦调整，默认启用
 - `--ptz-zoom-*`：光学变焦目标比例、容差、轮次和控制时长参数
 
@@ -370,7 +371,170 @@ HTTP 服务返回规则：
 - PTZ 对齐依赖 `meter_data_9k` 模型先检测到 `gauge`；找不到 `gauge` 会导致该图表计任务失败
 - 单张图内某个表盘几何读数失败会下沉到该表盘实例，不会主动让其他表盘失败
 
-### 8.3 数码表
+### 8.3 海康云台现场部署与标定 SOP
+
+新设备首次部署时，先运行部署脚本，再根据实际云台型号微调 pan、tilt 和 zoom 参数。实时 FOV 由 SDK 自动读取，不需要手工标定。
+
+#### 8.3.1 准备部署资源
+
+进入项目目录并确认环境包、表计模型和 ARM64 SDK 存在：
+
+```bash
+cd /home/glr/glr_nav_perception/yolo_detection
+ls resources/yolo-jetson.tar.gz
+ls runs/weights/1_dial_reading/best.pt
+ls HK_SDK/HK_SDK_arm64_Linux/lib/linux/libhcnetsdk.so
+```
+
+#### 8.3.2 执行部署脚本
+
+```bash
+bash deploy_yolo_jetson_env.sh
+```
+
+部署脚本会自动检测 CPU 架构，选择 ARM64 或 x86 海康 SDK，部署 conda 环境，交互式读取云台连接参数，并安装 `ai_detection.service`。云台连接参数保存到：
+
+```text
+recognition_http_server/hikvision.env
+```
+
+部署完成后检查服务：
+
+```bash
+systemctl status ai_detection.service --no-pager
+curl -fsS http://127.0.0.1:3208/health
+```
+
+#### 8.3.3 验证云台连接和实时 FOV
+
+```bash
+set -a
+source recognition_http_server/hikvision.env
+set +a
+
+conda run -n yolo-jetson python scripts/hk_sdk_probe.py \
+  --host "$HIK_HOST" \
+  --port "$HIK_PORT" \
+  --username "$HIK_USERNAME" \
+  --password "$HIK_PASSWORD" \
+  --channel "$HIK_CHANNEL" \
+  --read-gis-fov
+```
+
+预期输出包含：
+
+```text
+login_ok ...
+ptz_ok ... pan=... tilt=... zoom=...
+gis_fov_ok ... hfov=... vfov=... zoom=...
+```
+
+登录失败时，依次检查设备 IP、SDK 端口、账号密码，以及是否需要配置 `HIK_LOCAL_IP` 绑定指定网卡。
+
+#### 8.3.4 标定 pan 和 tilt 角速度
+
+不同型号云台在相同 SDK speed 档位下的实际转速不同。建议固定使用 `--nudge-speed 3`，分别测试右、左、上、下四个方向，每次移动 `0.5s`。
+
+以向右测试为例：
+
+```bash
+conda run -n yolo-jetson python scripts/hk_sdk_probe.py \
+  --host "$HIK_HOST" \
+  --port "$HIK_PORT" \
+  --username "$HIK_USERNAME" \
+  --password "$HIK_PASSWORD" \
+  --channel "$HIK_CHANNEL" \
+  --nudge-direction right \
+  --nudge-duration 0.5 \
+  --nudge-speed 3
+```
+
+每次运行都会输出移动前后的 PTZ 位置。按以下公式计算角速度：
+
+```text
+方向角速度 = abs(移动后角度 - 移动前角度) / 0.5
+pan_dps = 左右方向角速度平均值
+tilt_dps = 上下方向角速度平均值
+```
+
+当前现场设备的参考值：
+
+```text
+pan_dps = 12.0
+tilt_dps = 5.5
+```
+
+#### 8.3.5 持久化设备参数
+
+推荐通过 systemd override 保存现场参数，避免重新部署代码后丢失标定值：
+
+```bash
+sudo systemctl edit ai_detection.service
+```
+
+填写：
+
+```ini
+[Service]
+ExecStart=
+ExecStart=/bin/bash -lc 'source "/home/glr/miniconda3/etc/profile.d/conda.sh" && conda activate "/home/glr/miniconda3/envs/yolo-jetson" && exec python "/home/glr/glr_nav_perception/yolo_detection/server.py" --ptz-nudge-speed 3 --ptz-zoom-max-ratio 4 --ptz-pan-nudge-degrees-per-second 12.0 --ptz-tilt-nudge-degrees-per-second 5.5 --ptz-align-max-delta-deg 2.0'
+```
+
+应用配置：
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart ai_detection.service
+curl -fsS http://127.0.0.1:3208/health
+```
+
+#### 8.3.6 提交表计任务并微调
+
+提交代表性的指针表任务，同时观察日志：
+
+```bash
+tail -f results/http_service/logs/server.log
+```
+
+重点关注：
+
+```text
+meter ptz fov/tuning read from sdk:
+hikvision ptz aligned:
+meter ptz alignment checked:
+```
+
+理想状态是表盘在 1 到 3 轮内逐渐接近画面中心，不在目标两侧反复跳动。参数调整规则：
+
+| 现象 | 调整方式 |
+|------|----------|
+| pan 每次移动过量 | 增大 `--ptz-pan-nudge-degrees-per-second` |
+| pan 移动不足 | 减小 `--ptz-pan-nudge-degrees-per-second` |
+| tilt 每次移动过量 | 增大 `--ptz-tilt-nudge-degrees-per-second` |
+| tilt 移动不足 | 减小 `--ptz-tilt-nudge-degrees-per-second` |
+| 初次跳动幅度太大 | 减小 `--ptz-align-max-delta-deg` |
+| 中心附近频繁微调 | 适当增大 `--ptz-align-threshold-deg` |
+| zoom 超过设备能力 | 设置 `--ptz-zoom-max-ratio` |
+| zoom 过快 | 减小 `--ptz-zoom-nudge-seconds` 或 `--ptz-zoom-nudge-steps` |
+
+每轮参数调整建议控制在 `10%` 到 `20%`。
+
+#### 8.3.7 验收清单
+
+```bash
+systemctl is-active ai_detection.service
+curl -fsS http://127.0.0.1:3208/health
+```
+
+逐项确认：
+
+- SDK 登录成功，能够读取实时 FOV
+- 当前 zoom 在设备支持范围内
+- pan、tilt 不再明显移动过量
+- 连续提交多次表计任务时，云台能够稳定收敛
+- 重启设备后服务自动启动，现场标定参数仍然生效
+
+### 8.4 数码表
 
 数码表链路目前只完成了服务端骨架，尚未真正接入 ROI 检测和 OCR。
 

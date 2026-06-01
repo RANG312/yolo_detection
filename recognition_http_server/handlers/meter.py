@@ -6,7 +6,6 @@ from pathlib import Path
 import cv2
 
 from recognition_http_server.dial_reading import predict_image_instances, save_canvas
-from recognition_http_server.hikvision_ptz import HikvisionPTZController
 from recognition_http_server.helpers import build_error_data_entry, build_meter_predict_args, build_success_data_entry
 from recognition_http_server.ptz_alignment import auto_tune_ptz_settings
 
@@ -28,33 +27,26 @@ def resolve_current_ptz_runtime(service, base_config=None):  # noqa: ANN001, ANN
         horizontal_fov_deg=float(fov.horizontal_deg),
         vertical_fov_deg=float(fov.vertical_deg),
         threshold_deg=tuned.threshold_deg,
-        max_delta_deg=tuned.max_delta_deg,
+        max_delta_deg=min(float(config.max_delta_deg), tuned.max_delta_deg),
     )
     tuned_controller = controller
-    if isinstance(controller, HikvisionPTZController):
-        tuned_controller = HikvisionPTZController(
-            replace(
-                controller.config,
-                nudge_degrees_per_second=tuned.nudge_degrees_per_second,
-                nudge_max_steps=tuned.nudge_max_steps,
-                tilt_nudge_scale=tuned.tilt_nudge_scale,
-            ),
-            logger=getattr(service, "logger", None),
-        )
+    controller_config = getattr(tuned_controller, "config", None)
     logger = getattr(service, "logger", None)
     if logger is not None:
         logger.info(
             (
                 "meter ptz fov/tuning read from sdk: hfov=%.3f vfov=%.3f threshold=%.3f "
-                "max_delta=%.3f nudge_dps=%.3f nudge_steps=%s tilt_scale=%.3f"
+                "max_delta=%.3f pan_dps=%.3f tilt_dps=%.3f nudge_steps=%s"
             ),
             current_config.horizontal_fov_deg,
             current_config.vertical_fov_deg,
             current_config.threshold_deg,
             current_config.max_delta_deg,
-            tuned.nudge_degrees_per_second,
-            tuned.nudge_max_steps,
-            tuned.tilt_nudge_scale,
+            getattr(controller_config, "pan_nudge_degrees_per_second", None)
+            or getattr(controller_config, "nudge_degrees_per_second", tuned.nudge_degrees_per_second),
+            getattr(controller_config, "tilt_nudge_degrees_per_second", None)
+            or getattr(controller_config, "nudge_degrees_per_second", tuned.nudge_degrees_per_second),
+            getattr(controller_config, "nudge_max_steps", tuned.nudge_max_steps),
         )
     return current_config, tuned_controller
 

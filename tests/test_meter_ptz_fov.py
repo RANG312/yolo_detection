@@ -38,7 +38,7 @@ def test_resolve_current_ptz_alignment_config_reads_current_sdk_fov() -> None:
     assert config.zoom_enabled is True
 
 
-def test_resolve_current_ptz_runtime_auto_tunes_controller_from_sdk_fov() -> None:
+def test_resolve_current_ptz_runtime_preserves_device_motion_profile() -> None:
     class FakeController(HikvisionPTZController):
         def read_field_of_view(self):  # noqa: ANN201
             return SimpleNamespace(horizontal_deg=7.48, vertical_deg=4.21)
@@ -51,7 +51,14 @@ def test_resolve_current_ptz_runtime_auto_tunes_controller_from_sdk_fov() -> Non
             threshold_deg=1.0,
             max_delta_deg=10.0,
         ),
-        ptz_controller=FakeController(HikvisionPTZConfig(host="192.168.1.64", password="secret")),
+        ptz_controller=FakeController(
+            HikvisionPTZConfig(
+                host="192.168.1.64",
+                password="secret",
+                pan_nudge_degrees_per_second=12.0,
+                tilt_nudge_degrees_per_second=5.5,
+            )
+        ),
         logger=SimpleNamespace(info=lambda *args, **kwargs: None),
     )
 
@@ -61,6 +68,6 @@ def test_resolve_current_ptz_runtime_auto_tunes_controller_from_sdk_fov() -> Non
     assert config.vertical_fov_deg == 4.21
     assert config.threshold_deg == 0.05
     assert config.max_delta_deg == 3.74
-    assert controller.config.nudge_degrees_per_second == 1.0
-    assert controller.config.nudge_max_steps == 3
-    assert controller.config.tilt_nudge_scale == 1.5
+    assert controller.config.pan_nudge_degrees_per_second == 12.0
+    assert controller.config.tilt_nudge_degrees_per_second == 5.5
+    assert controller.config.nudge_max_steps == 2

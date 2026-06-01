@@ -120,6 +120,24 @@ def test_nudge_by_delta_scales_tilt_duration(monkeypatch) -> None:
     ]
 
 
+def test_nudge_by_delta_uses_independent_pan_and_tilt_profiles(monkeypatch) -> None:
+    sleep_durations: list[float] = []
+    monkeypatch.setattr(hikvision_ptz.time, "sleep", sleep_durations.append)
+
+    sdk = FakeSDK()
+    config = HikvisionPTZConfig(
+        channel=1,
+        nudge_speed=1,
+        pan_nudge_degrees_per_second=12.0,
+        tilt_nudge_degrees_per_second=5.0,
+        tilt_nudge_scale=2.0,
+    )
+
+    hikvision_ptz._nudge_by_delta(sdk, 3, config, pan_delta_deg=1.2, tilt_delta_deg=1.0)
+
+    assert sleep_durations == [0.1, 0.2]
+
+
 def test_nudge_zoom_sends_zoom_in_commands(monkeypatch) -> None:
     sleep_durations: list[float] = []
     monkeypatch.setattr(hikvision_ptz.time, "sleep", sleep_durations.append)
@@ -325,6 +343,41 @@ def test_controller_read_zoom_limits_prefers_configured_max_zoom_ratio(monkeypat
 
     assert limits.current_zoom == 19.8
     assert limits.max_zoom == 25.0
+
+
+def test_controller_read_zoom_limits_skips_invalid_inferred_max_zoom(monkeypatch) -> None:
+    calls = []
+
+    class FakePersistentSDK:
+        def NET_DVR_Init(self) -> bool:
+            calls.append("init")
+            return True
+
+        def NET_DVR_GetLastError(self) -> int:
+            return 0
+
+        def NET_DVR_Logout(self, user_id):  # noqa: ANN001, ANN202
+            calls.append(("logout", user_id))
+            return True
+
+        def NET_DVR_Cleanup(self):  # noqa: ANN202
+            calls.append("cleanup")
+            return True
+
+    sdk = FakePersistentSDK()
+    fov = HikvisionFieldOfView(101.76, 51.48, 0.0, 0.0, 0.0, 0.0, 1.0)
+
+    monkeypatch.setattr(hikvision_ptz, "_load_sdk", lambda lib_dir: sdk)
+    monkeypatch.setattr(hikvision_ptz, "_configure_sdk_paths", lambda sdk_arg, lib_dir: calls.append("configure"))
+    monkeypatch.setattr(hikvision_ptz, "_bind_local_ip", lambda sdk_arg, local_ip: calls.append(("bind", local_ip)))
+    monkeypatch.setattr(hikvision_ptz, "_login", lambda sdk_arg, config: 7)
+    monkeypatch.setattr(hikvision_ptz, "_read_gis_fov", lambda sdk_arg, user_id, channel: fov)
+
+    controller = hikvision_ptz.HikvisionPTZController(
+        HikvisionPTZConfig(host="192.168.1.64", password="secret")
+    )
+
+    assert controller.read_zoom_limits() is None
 
 
 def test_capture_image_uses_explicit_snapshot_channel(monkeypatch) -> None:
