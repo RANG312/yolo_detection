@@ -11,6 +11,7 @@ CUDSS_DEB_SOURCE_PATH="${RESOURCES_DIR}/${CUDSS_DEB_NAME}"
 CUPTI_DEB_NAME="cuda-cupti-12-6_12.6.68-1_arm64.deb"
 CUPTI_DEB_SOURCE_PATH="${RESOURCES_DIR}/${CUPTI_DEB_NAME}"
 HIKVISION_ENV_PATH="${SCRIPT_DIR}/recognition_http_server/hikvision.env"
+PROTECTED_BUILD_SCRIPT="${SCRIPT_DIR}/scripts/build_protected.py"
 SYSTEMD_SERVICE_NAME="ai_detection.service"
 SYSTEMD_SERVICE_PATH="/etc/systemd/system/${SYSTEMD_SERVICE_NAME}"
 
@@ -487,6 +488,45 @@ ensure_runtime_permissions() {
   log "已修正运行输出目录权限: ${results_dir} -> group ${access_user}, g+rwX, setgid"
 }
 
+ensure_cython_installed() {
+  if python -c 'import Cython' >/dev/null 2>&1; then
+    log "已检测到 Cython"
+    return
+  fi
+
+  log "当前环境未安装 Cython，尝试通过 pip 安装"
+  python -m pip install Cython || fail "Cython 安装失败，请检查网络或将 Cython 预装到 ${ENV_NAME} 环境"
+}
+
+build_protected_modules() {
+  local enabled="${BUILD_PROTECTED:-1}"
+
+  if [[ "${enabled}" == "0" ]]; then
+    log "BUILD_PROTECTED=0，跳过核心源码编译"
+    return
+  fi
+
+  [[ "${enabled}" == "1" ]] || fail "BUILD_PROTECTED 只支持 0 或 1: ${enabled}"
+  [[ -f "${PROTECTED_BUILD_SCRIPT}" ]] || fail "未找到核心源码编译脚本: ${PROTECTED_BUILD_SCRIPT}"
+
+  ensure_cython_installed
+  log "编译核心源码为 Python 扩展模块"
+  python "${PROTECTED_BUILD_SCRIPT}" build_ext --inplace
+  python - <<'PY'
+from pathlib import Path
+
+import recognition_http_server.dial_reading.pipeline as pipeline
+import recognition_http_server.service as service
+
+modules = (service, pipeline)
+for module in modules:
+    path = Path(module.__file__)
+    if path.suffix != ".so":
+        raise SystemExit(f"Protected module did not load from .so: {module.__name__} -> {path}")
+    print(f"[deploy] 已验证编译模块: {module.__name__} -> {path}", flush=True)
+PY
+}
+
 main() {
   local conda_base=""
   local conda_sh=""
@@ -537,6 +577,7 @@ main() {
   conda activate "${ENV_NAME}"
   set -u
 
+  build_protected_modules
   ensure_runtime_permissions "${access_user}"
   install_systemd_service "${SYSTEMD_SERVICE_PATH}" "${run_user}" "${SCRIPT_DIR}" "${conda_sh}" "${env_prefix}" "${hik_sdk_lib_dir}"
 

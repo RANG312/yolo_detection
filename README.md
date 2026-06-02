@@ -12,7 +12,7 @@
 ## 快速开始
 
 ### http server
-- conda环境部署：运行 `bash deploy_yolo_jetson_env.sh`自动部署环境，同时会删除相关的安装包和.git节省空间, 并添加自启的`systemd`服务
+- conda环境部署：运行 `bash deploy_yolo_jetson_env.sh` 自动部署环境，编译核心源码，同时会删除相关的安装包和 `.git` 节省空间，并添加自启的 `systemd` 服务
 - 日志：` results/http_service/logs/server.log `
 - 修改参数： ` recognition_http_server/constants.py ` 
 
@@ -396,7 +396,7 @@ ls HK_SDK/HK_SDK_arm64_Linux/lib/linux/libhcnetsdk.so
 bash deploy_yolo_jetson_env.sh
 ```
 
-部署脚本会自动检测 CPU 架构，选择 ARM64 或 x86 海康 SDK，部署 conda 环境，交互式读取云台连接参数，并安装 `ai_detection.service`。云台连接参数保存到：
+部署脚本会自动检测 CPU 架构，选择 ARM64 或 x86 海康 SDK，部署 conda 环境，交互式读取云台连接参数，编译核心源码，并安装 `ai_detection.service`。云台连接参数保存到：
 
 ```text
 recognition_http_server/hikvision.env
@@ -1050,6 +1050,14 @@ recognition_http_server/dial_reading/pipeline.cpython-310-aarch64-linux-gnu.so
 ```
 
 Python 会优先加载同名 `.so`。完成验证后，交付包可以删除已编译核心模块对应的 `.py`，但应保留入口文件、配置文件和各包的 `__init__.py`。
+
+`deploy_yolo_jetson_env.sh` 默认会自动执行同一套编译流程。脚本会先检查 `yolo-jetson` 环境中的 Cython，缺失时自动尝试通过 pip 安装；编译后验证关键模块确实从 `.so` 加载，再继续重启 systemd 服务。
+
+仅在开发调试期间需要保留纯 Python 运行方式时，可以显式跳过自动编译：
+
+```bash
+BUILD_PROTECTED=0 bash deploy_yolo_jetson_env.sh
+```
 
 ### 18.2 无物理云台测试
 
