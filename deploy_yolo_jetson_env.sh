@@ -504,7 +504,7 @@ ensure_gcc_installed() {
 }
 
 build_protected_modules() {
-  local enabled="${BUILD_PROTECTED:-1}"
+  local enabled="${BUILD_PROTECTED:-0}"
 
   if [[ "${enabled}" == "0" ]]; then
     log "BUILD_PROTECTED=0，跳过核心源码编译"
