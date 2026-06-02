@@ -498,6 +498,11 @@ ensure_cython_installed() {
   python -m pip install Cython || fail "Cython 安装失败，请检查网络或将 Cython 预装到 ${ENV_NAME} 环境"
 }
 
+ensure_gcc_installed() {
+  command -v gcc >/dev/null 2>&1 || fail "未找到 gcc，请先安装构建工具: sudo apt install build-essential"
+  log "已检测到 gcc: $(gcc --version | head -n 1)"
+}
+
 build_protected_modules() {
   local enabled="${BUILD_PROTECTED:-1}"
 
@@ -509,6 +514,7 @@ build_protected_modules() {
   [[ "${enabled}" == "1" ]] || fail "BUILD_PROTECTED 只支持 0 或 1: ${enabled}"
   [[ -f "${PROTECTED_BUILD_SCRIPT}" ]] || fail "未找到核心源码编译脚本: ${PROTECTED_BUILD_SCRIPT}"
 
+  ensure_gcc_installed
   ensure_cython_installed
   log "编译核心源码为 Python 扩展模块"
   python "${PROTECTED_BUILD_SCRIPT}" build_ext --inplace

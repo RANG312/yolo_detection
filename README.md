@@ -1025,8 +1025,15 @@ python test_http.py \
 
 ```bash
 cd /home/glr/prj/yolo_detection
+gcc --version
 /home/glr/miniconda3/envs/yolo-jetson/bin/python -m pip install Cython
 /home/glr/miniconda3/envs/yolo-jetson/bin/python scripts/build_protected.py build_ext --inplace
+```
+
+系统必须预先安装 GCC。缺失时安装：
+
+```bash
+sudo apt install build-essential
 ```
 
 构建脚本：
@@ -1051,7 +1058,7 @@ recognition_http_server/dial_reading/pipeline.cpython-310-aarch64-linux-gnu.so
 
 Python 会优先加载同名 `.so`。完成验证后，交付包可以删除已编译核心模块对应的 `.py`，但应保留入口文件、配置文件和各包的 `__init__.py`。
 
-`deploy_yolo_jetson_env.sh` 默认会自动执行同一套编译流程。脚本会先检查 `yolo-jetson` 环境中的 Cython，缺失时自动尝试通过 pip 安装；编译后验证关键模块确实从 `.so` 加载，再继续重启 systemd 服务。
+`deploy_yolo_jetson_env.sh` 默认会自动执行同一套编译流程。脚本会先检查系统 GCC，再检查 `yolo-jetson` 环境中的 Cython；Cython 缺失时自动尝试通过 pip 安装。编译后验证关键模块确实从 `.so` 加载，再继续重启 systemd 服务。
 
 仅在开发调试期间需要保留纯 Python 运行方式时，可以显式跳过自动编译：
 
