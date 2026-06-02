@@ -40,6 +40,7 @@ from recognition_http_server.helpers import (
 from recognition_http_server.ptz_alignment import PTZAlignmentConfig
 from recognition_http_server.schemas import TaskHandler, TaskState
 from recognition_http_server.utils.image_io import prepare_image
+from recognition_http_server.virtual_ptz import VirtualPTZConfig, VirtualPTZController
 
 
 def resolve_task_callback_url(extra_info: dict[str, Any], callback_host: str, callback_port: int) -> str:
@@ -75,39 +76,52 @@ class RecognitionService:
         )
         self.ptz_controller = None
         if self.ptz_alignment_config.enabled:
-            self.ptz_controller = HikvisionPTZController(
-                HikvisionPTZConfig(
-                    host=getattr(config, "ptz_host", ""),
-                    port=getattr(config, "ptz_port", 8000),
-                    username=getattr(config, "ptz_username", "admin"),
-                    password=getattr(config, "ptz_password", ""),
-                    channel=getattr(config, "ptz_channel", 1),
-                    local_ip=getattr(config, "ptz_local_ip", ""),
-                    sdk_lib_dir=resolve_sdk_lib_dir(getattr(config, "ptz_sdk_lib_dir", "")),
-                    tilt_min_deg=getattr(config, "ptz_tilt_min_deg", 0.0),
-                    tilt_max_deg=getattr(config, "ptz_tilt_max_deg", 90.0),
-                    settle_seconds=getattr(config, "ptz_settle_seconds", 0.3),
-                    nudge_speed=getattr(config, "ptz_nudge_speed", 1),
-                    nudge_degrees_per_second=getattr(config, "ptz_nudge_degrees_per_second", 8.0),
-                    pan_nudge_degrees_per_second=getattr(config, "ptz_pan_nudge_degrees_per_second", None),
-                    tilt_nudge_degrees_per_second=getattr(config, "ptz_tilt_nudge_degrees_per_second", None),
-                    nudge_min_seconds=getattr(config, "ptz_nudge_min_seconds", 0.05),
-                    nudge_max_seconds=getattr(config, "ptz_nudge_max_seconds", 1.0),
-                    nudge_max_steps=getattr(config, "ptz_nudge_max_steps", 2),
-                    tilt_nudge_scale=getattr(config, "ptz_tilt_nudge_scale", 1.0),
-                    zoom_nudge_speed=getattr(config, "ptz_zoom_nudge_speed", 1),
-                    zoom_nudge_seconds=getattr(config, "ptz_zoom_nudge_seconds", 0.6),
-                    zoom_nudge_steps=getattr(config, "ptz_zoom_nudge_steps", 1),
-                    zoom_focus_timeout=getattr(config, "ptz_zoom_focus_timeout", 2.0),
-                    zoom_max_ratio=getattr(config, "ptz_zoom_max_ratio", 0.0),
-                ),
-                logger=self.logger,
-            )
+            if getattr(config, "ptz_controller", "hikvision") == "virtual":
+                virtual_image = str(getattr(config, "virtual_ptz_image", "")).strip()
+                self.ptz_controller = VirtualPTZController(
+                    VirtualPTZConfig(
+                        image_path=Path(virtual_image) if virtual_image else None,
+                        horizontal_fov_deg=self.ptz_alignment_config.horizontal_fov_deg,
+                        vertical_fov_deg=self.ptz_alignment_config.vertical_fov_deg,
+                        max_zoom=float(getattr(config, "ptz_zoom_max_ratio", 0.0)) or 100.0,
+                    ),
+                    logger=self.logger,
+                )
+            else:
+                self.ptz_controller = HikvisionPTZController(
+                    HikvisionPTZConfig(
+                        host=getattr(config, "ptz_host", ""),
+                        port=getattr(config, "ptz_port", 8000),
+                        username=getattr(config, "ptz_username", "admin"),
+                        password=getattr(config, "ptz_password", ""),
+                        channel=getattr(config, "ptz_channel", 1),
+                        local_ip=getattr(config, "ptz_local_ip", ""),
+                        sdk_lib_dir=resolve_sdk_lib_dir(getattr(config, "ptz_sdk_lib_dir", "")),
+                        tilt_min_deg=getattr(config, "ptz_tilt_min_deg", 0.0),
+                        tilt_max_deg=getattr(config, "ptz_tilt_max_deg", 90.0),
+                        settle_seconds=getattr(config, "ptz_settle_seconds", 0.3),
+                        nudge_speed=getattr(config, "ptz_nudge_speed", 1),
+                        nudge_degrees_per_second=getattr(config, "ptz_nudge_degrees_per_second", 8.0),
+                        pan_nudge_degrees_per_second=getattr(config, "ptz_pan_nudge_degrees_per_second", None),
+                        tilt_nudge_degrees_per_second=getattr(config, "ptz_tilt_nudge_degrees_per_second", None),
+                        nudge_min_seconds=getattr(config, "ptz_nudge_min_seconds", 0.05),
+                        nudge_max_seconds=getattr(config, "ptz_nudge_max_seconds", 1.0),
+                        nudge_max_steps=getattr(config, "ptz_nudge_max_steps", 2),
+                        tilt_nudge_scale=getattr(config, "ptz_tilt_nudge_scale", 1.0),
+                        zoom_nudge_speed=getattr(config, "ptz_zoom_nudge_speed", 1),
+                        zoom_nudge_seconds=getattr(config, "ptz_zoom_nudge_seconds", 0.6),
+                        zoom_nudge_steps=getattr(config, "ptz_zoom_nudge_steps", 1),
+                        zoom_focus_timeout=getattr(config, "ptz_zoom_focus_timeout", 2.0),
+                        zoom_max_ratio=getattr(config, "ptz_zoom_max_ratio", 0.0),
+                    ),
+                    logger=self.logger,
+                )
             self.logger.info(
                 (
-                    "ptz alignment enabled: host=%s channel=%s fov_source=sdk_per_meter_request "
+                    "ptz alignment enabled: controller=%s host=%s channel=%s fov_source=sdk_per_meter_request "
                     "fallback_hfov=%.3f fallback_vfov=%.3f threshold=%.3f max_delta=%.3f sdk_lib_dir=%s"
                 ),
+                getattr(config, "ptz_controller", "hikvision"),
                 getattr(config, "ptz_host", ""),
                 getattr(config, "ptz_channel", 1),
                 self.ptz_alignment_config.horizontal_fov_deg,
@@ -399,7 +413,7 @@ class RecognitionService:
         debug_center: bool,
     ) -> list[dict[str, str]]:
         """复用通用检测链路处理火源检测任务。"""
-        del extra_info, debug_center
+        _ = extra_info, debug_center
         return run_detection_recognition(
             self, local_image_path, self.fire_model, [data_type], visualize_path, "火源检测"
         )
@@ -413,7 +427,7 @@ class RecognitionService:
         debug_center: bool,
     ) -> list[dict[str, str]]:
         """复用通用检测链路处理安全帽检测任务。"""
-        del extra_info, debug_center
+        _ = extra_info, debug_center
         return run_detection_recognition(
             self, local_image_path, self.safehat_model, [data_type], visualize_path, "安全帽检测"
         )
@@ -427,7 +441,7 @@ class RecognitionService:
         debug_center: bool,
     ) -> list[dict[str, str]]:
         """复用通用检测链路处理消防设施检测任务。"""
-        del extra_info, debug_center
+        _ = extra_info, debug_center
         return run_detection_recognition(
             self,
             local_image_path,
@@ -446,7 +460,7 @@ class RecognitionService:
         debug_center: bool,
     ) -> list[dict[str, str]]:
         """复用通用检测链路处理摔倒检测任务。"""
-        del extra_info, debug_center
+        _ = extra_info, debug_center
         return run_detection_recognition(
             self, local_image_path, self.person_fall_down_model, [data_type], visualize_path, "摔倒检测"
         )
@@ -460,7 +474,7 @@ class RecognitionService:
         debug_center: bool,
     ) -> list[dict[str, str]]:
         """复用通用检测链路处理灭火器检测任务。"""
-        del extra_info, debug_center
+        _ = extra_info, debug_center
         return run_detection_recognition(
             self, local_image_path, self.fire_extinguisher_model, [data_type], visualize_path, "灭火器检测"
         )
@@ -474,7 +488,7 @@ class RecognitionService:
         debug_center: bool,
     ) -> list[dict[str, str]]:
         """复用通用检测链路处理人车检测任务。"""
-        del extra_info, debug_center
+        _ = extra_info, debug_center
         return run_detection_recognition(
             self, local_image_path, self.person_and_cars_model, [data_type], visualize_path, "人车检测"
         )

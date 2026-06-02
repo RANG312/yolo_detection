@@ -110,6 +110,17 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_PTZ_ALIGN_ENABLED,
         help="Enable Hikvision PTZ auto-alignment before pointer meter ROI retry.",
     )
+    parser.add_argument(
+        "--ptz-controller",
+        choices=("hikvision", "virtual"),
+        default=os.environ.get("PTZ_CONTROLLER", "hikvision"),
+        help="PTZ backend. Use 'virtual' with a static image when no physical gimbal is connected.",
+    )
+    parser.add_argument(
+        "--virtual-ptz-image",
+        default=os.environ.get("VIRTUAL_PTZ_IMAGE", ""),
+        help="Static image returned after virtual PTZ movement or zoom requests.",
+    )
     parser.add_argument("--ptz-host", default=os.environ.get("HIK_HOST", DEFAULT_PTZ_HOST), help="Hikvision device host.")
     parser.add_argument(
         "--ptz-port",

@@ -57,6 +57,7 @@ recognition_http_server/
   http_api.py
   service.py
   schemas.py
+  virtual_ptz.py
   dial_reading/
     __init__.py
     cli.py
@@ -81,6 +82,7 @@ recognition_http_server/
 - `helpers.py`：请求字段解析、任务类型路由、结果结构辅助函数
 - `http_api.py`：HTTP 协议层
 - `service.py`：任务状态、模型加载、任务调度
+- `virtual_ptz.py`：无物理云台时使用静态图片模拟抓图，并记录 pan、tilt 和 zoom 请求
 - `dial_reading/`：指针表计读数子包，承载原 `dial_reading.py` 中的模型推理、检测实例分配、几何读数和命令行能力
 - `handlers/detection.py`：通用检测执行链路
 - `handlers/meter.py`：表计相关执行链路
@@ -159,6 +161,8 @@ python recognition_http_server/app.py
 - `--callback-port`：回调端口，默认 `8088`
 - `--request-timeout`：图片下载和回调超时时间
 - `--ptz-align-enabled`：启用海康云台自动对齐，仅作用于指针表计任务
+- `--ptz-controller`：云台后端，可选 `hikvision` 或 `virtual`，默认 `hikvision`
+- `--virtual-ptz-image`：虚拟云台抓图时返回的静态图片路径，也可通过 `VIRTUAL_PTZ_IMAGE` 环境变量设置
 - `--ptz-host` / `--ptz-port` / `--ptz-username` / `--ptz-password` / `--ptz-channel`：海康设备连接参数
 - `--ptz-horizontal-fov-deg` / `--ptz-vertical-fov-deg`：手工视场角兜底值；服务端启用 PTZ 后会在每次指针表识别前优先通过海康 SDK 读取当前 FOV
 - `--ptz-align-threshold-deg`：pan/tilt 偏移小于该阈值时不移动云台
@@ -1003,4 +1007,92 @@ python test_http.py \
   --images /data/test/digital.jpg \
   --recognize-type 1 \
   --recognize-subtype digital
+```
+
+## 18. 核心源码编译与交付
+
+交付到 Jetson Orin NX 时，可以使用 Cython 将核心业务模块编译为 Python 扩展模块 `.so`，提高源码反编译成本。入口、配置和兼容层继续保留为 Python 文件，便于现场维护。
+
+注意：
+
+- `.so` 与 CPU 架构、Python ABI 和系统环境绑定
+- ARM64 Jetson 上生成的 `.so` 不能直接用于 x86，也不能跨 Python 小版本复用
+- 编译不能提供绝对不可逆保护，模型权重仍需按项目交付要求单独管理
+
+### 18.1 编译环境
+
+必须在目标 Jetson 或相同 JetPack、ARM64 架构和 Python 版本的构建机上执行。项目部署环境默认使用 `yolo-jetson`：
+
+```bash
+cd /home/glr/prj/yolo_detection
+/home/glr/miniconda3/envs/yolo-jetson/bin/python -m pip install Cython
+/home/glr/miniconda3/envs/yolo-jetson/bin/python scripts/build_protected.py build_ext --inplace
+```
+
+构建脚本：
+
+```text
+scripts/build_protected.py
+```
+
+脚本会编译服务编排、请求辅助、海康和虚拟云台、handler、表计后处理以及图片输入模块。Cython 中间文件统一写入：
+
+```text
+build/cython/
+```
+
+生成的扩展模块类似：
+
+```text
+recognition_http_server/service.cpython-310-aarch64-linux-gnu.so
+recognition_http_server/virtual_ptz.cpython-310-aarch64-linux-gnu.so
+recognition_http_server/dial_reading/pipeline.cpython-310-aarch64-linux-gnu.so
+```
+
+Python 会优先加载同名 `.so`。完成验证后，交付包可以删除已编译核心模块对应的 `.py`，但应保留入口文件、配置文件和各包的 `__init__.py`。
+
+### 18.2 无物理云台测试
+
+测试板没有物理云台时，使用虚拟云台后端：
+
+```bash
+python server.py \
+  --ptz-controller virtual \
+  --virtual-ptz-image /home/glr/prj/yolo_detection/data/105.jpg
+```
+
+如果服务通过 systemd 启动，且 `ai_detection.service` 引用了 `recognition_http_server/hikvision.env`，该文件必须存在。无物理云台测试板可以填写：
+
+```text
+PTZ_CONTROLLER=virtual
+VIRTUAL_PTZ_IMAGE=/home/glr/prj/yolo_detection/data/105.jpg
+```
+
+该文件包含现场配置，已被 `.gitignore` 忽略，不应提交真实账号或密码。
+
+### 18.3 systemd 验证
+
+编译后必须重启服务，确认运行的不是旧 Python 进程：
+
+```bash
+sudo systemctl restart ai_detection.service
+systemctl status ai_detection.service --no-pager
+curl -fsS http://127.0.0.1:3208/health
+```
+
+使用 root 权限检查运行进程实际加载的扩展模块：
+
+```bash
+PID="$(systemctl show -p MainPID --value ai_detection.service)"
+sudo grep -E 'recognition_http_server/(service|virtual_ptz|dial_reading/pipeline).*\.so' "/proc/$PID/maps"
+```
+
+使用两张量程为 `25` 的表计图片执行 HTTP 回归：
+
+```bash
+/home/glr/miniconda3/envs/yolo-jetson/bin/python test_http.py \
+  --server http://127.0.0.1:3208 \
+  --images data/105.jpg data/156.jpg \
+  --data-type 1:25 \
+  --timeout 180
 ```

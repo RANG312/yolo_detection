@@ -706,7 +706,12 @@ def _durations_for_degrees(
     durations: list[float] = []
     while remaining > 1e-6 and len(durations) < config.nudge_max_steps:
         duration = min(config.nudge_max_seconds, remaining)
-        durations.append(_clamp(max(config.nudge_min_seconds, duration) * scale, config.nudge_min_seconds, config.nudge_max_seconds))
+        clamped_duration = _clamp(
+            max(config.nudge_min_seconds, duration) * scale,
+            config.nudge_min_seconds,
+            config.nudge_max_seconds,
+        )
+        durations.append(round(clamped_duration, 6))
         remaining -= duration
     return durations
 
