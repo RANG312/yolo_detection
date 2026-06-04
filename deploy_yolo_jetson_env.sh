@@ -516,8 +516,8 @@ build_protected_modules() {
 
   ensure_gcc_installed
   ensure_cython_installed
-  log "编译核心源码为 Python 扩展模块"
-  python "${PROTECTED_BUILD_SCRIPT}" build_ext --inplace
+  log "编译核心源码为 Python 扩展模块，并删除已保护的原始源码"
+  python "${PROTECTED_BUILD_SCRIPT}" build_ext --inplace --remove-sources
   python - <<'PY'
 from pathlib import Path
 

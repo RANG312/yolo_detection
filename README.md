@@ -1056,7 +1056,14 @@ recognition_http_server/virtual_ptz.cpython-310-aarch64-linux-gnu.so
 recognition_http_server/dial_reading/pipeline.cpython-310-aarch64-linux-gnu.so
 ```
 
-Python 会优先加载同名 `.so`。完成验证后，交付包可以删除已编译核心模块对应的 `.py`，但应保留入口文件、配置文件和各包的 `__init__.py`。
+Python 会优先加载同名 `.so`。仅手工编译时，上述命令默认保留 `.py`，方便继续调试。准备交付包时增加 `--remove-sources`：
+
+```bash
+/home/glr/miniconda3/envs/yolo-jetson/bin/python \
+  scripts/build_protected.py build_ext --inplace --remove-sources
+```
+
+该参数会先确认每个受保护模块都已生成对应 `.so`，再删除核心模块对应的 `.py`、字节码缓存和 `build/` 下的 Cython 中间文件。入口文件、配置文件和各包的 `__init__.py` 会保留。
 
 `deploy_yolo_jetson_env.sh` 默认跳过编译，方便开发阶段直接调试 Python 源码。交付或专项验证时，显式启用保护构建：
 
@@ -1064,7 +1071,9 @@ Python 会优先加载同名 `.so`。完成验证后，交付包可以删除已�
 BUILD_PROTECTED=1 bash deploy_yolo_jetson_env.sh
 ```
 
-启用后，脚本会先检查系统 GCC，再检查 `yolo-jetson` 环境中的 Cython；Cython 缺失时自动尝试通过 pip 安装。编译后验证关键模块确实从 `.so` 加载，再继续重启 systemd 服务。
+启用后，脚本会先检查系统 GCC，再检查 `yolo-jetson` 环境中的 Cython；Cython 缺失时自动尝试通过 pip 安装。随后编译 `.so`，删除受保护的原始源码和中间文件，验证关键模块确实从 `.so` 加载，再继续重启 systemd 服务。
+
+注意：`BUILD_PROTECTED=1` 面向最终交付，会删除核心源码。开发板仍需继续修改和调试代码时，不要开启该选项。
 
 开发调试时直接运行即可，或显式保持纯 Python 模式：
 
