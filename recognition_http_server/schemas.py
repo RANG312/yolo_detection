@@ -30,6 +30,7 @@ class TaskState:
     status: str = "pending"
     created_at: str = ""
     updated_at: str = ""
+    result_dir_name: str = ""
     request_payload: dict[str, Any] = field(default_factory=dict)
     callback_payload: dict[str, Any] | None = None
     callback_status_code: int | None = None

@@ -217,12 +217,14 @@ class RecognitionService:
         parse_extra_info(payload.get("extra_info", ""))
 
         with self._tasks_lock:
+            result_dir_name = f"{time.strftime('%Y%m%d_%H%M%S')}_{req_id}"
             task = TaskState(
                 req_id=req_id,
                 callback_host=callback_host,
                 status="processing",
                 created_at=now_text(),
                 updated_at=now_text(),
+                result_dir_name=result_dir_name,
                 request_payload=payload,
             )
             self._tasks[req_id] = task
@@ -271,7 +273,15 @@ class RecognitionService:
             data_result = []
             for index, (image_path, data_type) in enumerate(zip(image_paths, image_data_types), start=1):
                 data_result.append(
-                    self._process_single_image(req_id, index, image_path, data_type, extra_info, debug_center)
+                    self._process_single_image(
+                        req_id,
+                        index,
+                        image_path,
+                        data_type,
+                        extra_info,
+                        debug_center,
+                        task.result_dir_name,
+                    )
                 )
 
             callback_payload = {
@@ -304,12 +314,13 @@ class RecognitionService:
         data_type: dict[str, str],
         extra_info: dict[str, Any],
         debug_center: bool,
+        result_dir_name: str | None = None,
     ) -> dict[str, Any]:
         """处理单张图片，包括输入准备、handler 分发和结果组装。"""
         local_image_path = prepare_image(
             self.logger, self.input_root, self.config.request_timeout, req_id, index, image_path
         )
-        image_output_dir = self.output_root / req_id
+        image_output_dir = self.output_root / (result_dir_name or f"{time.strftime('%Y%m%d_%H%M%S')}_{req_id}")
         image_output_dir.mkdir(parents=True, exist_ok=True)
         task_kind = resolve_task_kind(data_type["recognize_type"])
         handler = self._task_handlers.get(task_kind)
