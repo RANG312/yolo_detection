@@ -56,7 +56,7 @@ from recognition_http_server.helpers import (
 from recognition_http_server.schemas import MeterSubtypeResolution, TaskHandler, TaskState
 
 
-def __getattr__(name: str):  # noqa: ANN202
+def __getattr__(name: str):
     if name == "main":
         from recognition_http_server.app import main
 
@@ -74,6 +74,7 @@ def __getattr__(name: str):  # noqa: ANN202
 
         return RecognitionService
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 __all__ = [
     "DEFAULT_CALLBACK_PATH",
@@ -129,8 +130,8 @@ __all__ = [
     "make_filename_from_url",
     "normalize_data_types",
     "now_text",
-    "parse_extra_info",
     "parse_args",
+    "parse_extra_info",
     "resolve_meter_subtype",
     "resolve_task_kind",
     "split_image_paths",

@@ -15,7 +15,7 @@ from recognition_http_server.service import RecognitionService
 
 
 def main() -> None:
-    """初始化配置、日志和业务服务，并启动 HTTP 服务监听。"""
+    """初始化配置、日志和业务服务，并启动 HTTP 服务监听。."""
     args = parse_args()
     args.result_root = args.result_root.resolve()
     log_dir = args.result_root / DEFAULT_LOG_DIR_NAME
