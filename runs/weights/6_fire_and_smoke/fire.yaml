@@ -4,4 +4,4 @@ test: /home/wl/Downloads/yolov8_model/fire_dataset/images/test/
 
 nc: 2
 
-names: ['fire','smoke']
+names: ["fire", "smoke"]

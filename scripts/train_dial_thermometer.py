@@ -11,7 +11,6 @@ import yaml
 
 from ultralytics import YOLO
 
-
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SOURCE_DIR = ROOT / "data" / "dial_thermometer_datasets" / "dial_thermometer_datasets"
 DEFAULT_PREPARED_DIR = ROOT / "data" / "dial_thermometer_prepared"
@@ -24,7 +23,6 @@ def get_default_device() -> str:
 
 def default_run_name(prefix: str = "dial_thermometer") -> str:
     return f"{prefix}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-
 
 
 def parse_args() -> argparse.Namespace:
@@ -42,7 +40,12 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_PREPARED_DIR,
         help="Output directory for split images, labels, and dataset.yaml.",
     )
-    parser.add_argument("--model", type=str, default="/data/prj/yolov8_dial_reading/yolov8m.pt", help="Pretrained model or model config.")
+    parser.add_argument(
+        "--model",
+        type=str,
+        default="/data/prj/yolov8_dial_reading/yolov8m.pt",
+        help="Pretrained model or model config.",
+    )
     parser.add_argument("--epochs", type=int, default=200, help="Training epochs.")
     parser.add_argument("--imgsz", type=int, default=640, help="Training image size.")
     parser.add_argument("--batch", type=int, default=16, help="Batch size. Use -1 for auto-batch.")
@@ -51,12 +54,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--project", type=Path, default=ROOT / "runs" / "train", help="Ultralytics project dir.")
     parser.add_argument("--name", type=str, default=default_run_name(), help="Ultralytics run name.")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for train/val split.")
-    parser.add_argument("--deterministic", type=lambda x: str(x).lower() == "true", default=False, help="Enable deterministic training.")
+    parser.add_argument(
+        "--deterministic", type=lambda x: str(x).lower() == "true", default=False, help="Enable deterministic training."
+    )
     parser.add_argument("--val-ratio", type=float, default=0.2, help="Validation split ratio.")
     parser.add_argument("--overwrite-split", action="store_true", help="Rebuild prepared dataset even if it exists.")
     parser.add_argument("--patience", type=int, default=30, help="Early stopping patience.")
     parser.add_argument("--cache", type=str, default="ram", help="Ultralytics cache mode: False, ram, or disk.")
-    parser.add_argument("--amp", type=lambda x: str(x).lower() == "true", default=False, help="Enable AMP mixed precision.")
+    parser.add_argument(
+        "--amp", type=lambda x: str(x).lower() == "true", default=False, help="Enable AMP mixed precision."
+    )
     parser.add_argument("--optimizer", type=str, default="SGD", help="Optimizer to use, e.g. SGD, AdamW, auto.")
     parser.add_argument("--close-mosaic", type=int, default=10, help="Epochs before disabling mosaic.")
     parser.add_argument("--degrees", type=float, default=10.0, help="Rotation augmentation in degrees.")
@@ -70,7 +77,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--hsv-v", type=float, default=0.5, help="Brightness augmentation gain.")
     parser.add_argument("--mosaic", type=float, default=1.0, help="Mosaic augmentation probability.")
     parser.add_argument("--mixup", type=float, default=0.2, help="MixUp augmentation probability.")
-    parser.add_argument("--erasing", type=float, default=0.4, help="Random erasing probability for stronger appearance augmentation.")
+    parser.add_argument(
+        "--erasing", type=float, default=0.4, help="Random erasing probability for stronger appearance augmentation."
+    )
     parser.add_argument("--copy-paste", type=float, default=0.1, help="Copy-paste augmentation probability.")
     return parser.parse_args()
 
