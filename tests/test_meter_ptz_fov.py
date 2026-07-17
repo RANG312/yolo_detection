@@ -9,7 +9,7 @@ from recognition_http_server.ptz_alignment import PTZAlignmentConfig
 
 def test_resolve_current_ptz_alignment_config_reads_current_sdk_fov() -> None:
     class FakeController:
-        def read_field_of_view(self):  # noqa: ANN201
+        def read_field_of_view(self):
             return SimpleNamespace(horizontal_deg=2.9, vertical_deg=1.63)
 
     service = SimpleNamespace(
@@ -40,7 +40,7 @@ def test_resolve_current_ptz_alignment_config_reads_current_sdk_fov() -> None:
 
 def test_resolve_current_ptz_runtime_preserves_device_motion_profile() -> None:
     class FakeController(HikvisionPTZController):
-        def read_field_of_view(self):  # noqa: ANN201
+        def read_field_of_view(self):
             return SimpleNamespace(horizontal_deg=7.48, vertical_deg=4.21)
 
     service = SimpleNamespace(

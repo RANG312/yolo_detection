@@ -15,7 +15,6 @@ from uuid import uuid4
 
 import requests
 
-
 DEFAULT_SERVER = "http://127.0.0.1:3208"
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_CALLBACK_HOST = "0.0.0.0"
@@ -47,9 +46,9 @@ class CallbackState:
 
 
 class CallbackHandler(BaseHTTPRequestHandler):
-    server: "CallbackServer"
+    server: CallbackServer
 
-    def do_POST(self) -> None:  # noqa: N802
+    def do_POST(self) -> None:
         if self.path != self.server.callback_path:
             self._send_json(HTTPStatus.NOT_FOUND, {"code": 1, "resp_msg": "Path not found."})
             return
@@ -166,7 +165,9 @@ def parse_args() -> argparse.Namespace:
         help="Preset request scene used when --data-type is not provided.",
     )
     parser.add_argument("--callback-host", default=DEFAULT_CALLBACK_HOST, help="Local callback server bind host.")
-    parser.add_argument("--callback-port", type=int, default=DEFAULT_CALLBACK_PORT, help="Local callback server bind port.")
+    parser.add_argument(
+        "--callback-port", type=int, default=DEFAULT_CALLBACK_PORT, help="Local callback server bind port."
+    )
     parser.add_argument("--callback-path", default=DEFAULT_CALLBACK_PATH, help="Callback path.")
     parser.add_argument(
         "--callback-url",
@@ -182,7 +183,9 @@ def parse_args() -> argparse.Namespace:
         help="Capture one snapshot from a Hikvision camera and use it as the request image.",
     )
     parser.add_argument("--hik-host", default=os.environ.get("HIK_HOST", ""), help="Hikvision device host.")
-    parser.add_argument("--hik-port", type=int, default=int(os.environ.get("HIK_PORT", "8000")), help="Hikvision SDK port.")
+    parser.add_argument(
+        "--hik-port", type=int, default=int(os.environ.get("HIK_PORT", "8000")), help="Hikvision SDK port."
+    )
     parser.add_argument("--hik-username", default=os.environ.get("HIK_USERNAME", "admin"))
     parser.add_argument("--hik-password", default=os.environ.get("HIK_PASSWORD", ""))
     parser.add_argument("--hik-channel", type=int, default=int(os.environ.get("HIK_CHANNEL", "1")))
@@ -193,7 +196,9 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="HTTP snapshot channel. Defaults to <hik-channel>01, e.g. channel 1 -> 101.",
     )
-    parser.add_argument("--hik-snapshot-timeout", type=float, default=5.0, help="Hikvision snapshot timeout in seconds.")
+    parser.add_argument(
+        "--hik-snapshot-timeout", type=float, default=5.0, help="Hikvision snapshot timeout in seconds."
+    )
     parser.add_argument(
         "--hik-output-dir",
         type=Path,
@@ -259,7 +264,9 @@ def build_data_types_from_explicit_fields(raw_types: list[str], raw_subtypes: li
     elif len(raw_subtypes) == len(normalized_types):
         resolved_subtypes = raw_subtypes
     else:
-        raise ValueError("Provide either one shared --recognize-subtype or one --recognize-subtype per --recognize-type.")
+        raise ValueError(
+            "Provide either one shared --recognize-subtype or one --recognize-subtype per --recognize-type."
+        )
 
     data_types = []
     for recognize_type, recognize_subtype_raw in zip(normalized_types, resolved_subtypes):
@@ -270,7 +277,9 @@ def build_data_types_from_explicit_fields(raw_types: list[str], raw_subtypes: li
     return data_types
 
 
-def parse_data_types(raw_items: list[str], raw_types: list[str], raw_subtypes: list[str], scene: str) -> list[dict[str, str]]:
+def parse_data_types(
+    raw_items: list[str], raw_types: list[str], raw_subtypes: list[str], scene: str
+) -> list[dict[str, str]]:
     if raw_items and (raw_types or raw_subtypes):
         raise ValueError("Use either --data-type or --recognize-type/--recognize-subtype, not both.")
 
@@ -300,7 +309,7 @@ def build_callback_url(args: argparse.Namespace) -> str:
     return f"http://{args.host}:{args.callback_port}{args.callback_path}"
 
 
-def create_hikvision_controller(args: argparse.Namespace):  # noqa: ANN201
+def create_hikvision_controller(args: argparse.Namespace):
     if not args.hik_host:
         raise ValueError("Pass --hik-host or set HIK_HOST when using --hik-capture.")
     if not args.hik_password:
@@ -354,12 +363,12 @@ def resolve_image_paths(args: argparse.Namespace) -> list[str]:
     return images
 
 
-def read_initial_hikvision_position(args: argparse.Namespace):  # noqa: ANN201
+def read_initial_hikvision_position(args: argparse.Namespace):
     if not args.hik_capture or args.no_hik_restore:
         return None
     try:
         position = create_hikvision_controller(args).read_position()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         print(f"WARNING: failed to read initial Hikvision PTZ position; restore will be skipped: {exc}")
         return None
     print(
@@ -369,7 +378,7 @@ def read_initial_hikvision_position(args: argparse.Namespace):  # noqa: ANN201
     return position
 
 
-def restore_hikvision_position_after_delay(args: argparse.Namespace, position) -> None:  # noqa: ANN001
+def restore_hikvision_position_after_delay(args: argparse.Namespace, position) -> None:
     if position is None:
         return
     delay = max(0.0, float(args.hik_restore_delay))
