@@ -15,7 +15,6 @@ from requests.auth import HTTPDigestAuth
 
 from recognition_http_server.ptz_alignment import PTZAlignmentRequest, PTZZoomLimits
 
-
 ROOT = Path(__file__).resolve().parents[1]
 SDK_BASE_DIR = ROOT / "HK_SDK"
 LEGACY_X86_SDK_ROOT = ROOT / "HK_SDK_x86_Linux" / "HCNetSDKV6.1.11.5_build20251204_linux64_ZH"
@@ -253,7 +252,7 @@ class HikvisionFieldOfView:
 class HikvisionPTZController:
     """Small HCNetSDK wrapper that keeps one SDK session for repeated PTZ operations."""
 
-    def __init__(self, config: HikvisionPTZConfig, logger=None) -> None:  # noqa: ANN001
+    def __init__(self, config: HikvisionPTZConfig, logger=None) -> None:
         self.config = config
         self.logger = logger
         self._lock = threading.Lock()
@@ -322,7 +321,7 @@ class HikvisionPTZController:
                 self._close_unlocked()
                 raise
 
-    def zoom(self, request) -> None:  # noqa: ANN001
+    def zoom(self, request) -> None:
         if not self.config.host or not self.config.password:
             raise ValueError("Hikvision PTZ zoom requires host and password.")
         if request.zoom_direction not in {"in", "out"}:
@@ -583,7 +582,9 @@ def _read_gis_fov(sdk: ctypes.CDLL, user_id: int, channel: int) -> HikvisionFiel
     ok = sdk.NET_DVR_GetSTDConfig(user_id, NET_DVR_GET_GISINFO, ctypes.byref(cfg))
     if not ok:
         status_text = status.value.decode("utf-8", errors="replace")
-        raise RuntimeError(f"NET_DVR_GetSTDConfig GIS FOV failed: error={sdk.NET_DVR_GetLastError()} status={status_text}")
+        raise RuntimeError(
+            f"NET_DVR_GetSTDConfig GIS FOV failed: error={sdk.NET_DVR_GetLastError()} status={status_text}"
+        )
     fov = HikvisionFieldOfView(
         horizontal_deg=float(info.fHorizontalValue),
         vertical_deg=float(info.fVerticalValue),
@@ -603,9 +604,8 @@ def _is_valid_fov(fov: HikvisionFieldOfView) -> bool:
 
 
 def _has_zoom_fov_range(fov: HikvisionFieldOfView) -> bool:
-    return (
-        (fov.min_horizontal_deg > 0.0 and fov.max_horizontal_deg > fov.min_horizontal_deg)
-        or (fov.min_vertical_deg > 0.0 and fov.max_vertical_deg > fov.min_vertical_deg)
+    return (fov.min_horizontal_deg > 0.0 and fov.max_horizontal_deg > fov.min_horizontal_deg) or (
+        fov.min_vertical_deg > 0.0 and fov.max_vertical_deg > fov.min_vertical_deg
     )
 
 
@@ -749,7 +749,7 @@ def _decode_bcd_angle(value: int) -> float:
 
 
 def _encode_bcd_angle(degrees: float) -> int:
-    tenths = int(round(float(degrees) * 10.0))
+    tenths = round(float(degrees) * 10.0)
     if tenths < 0:
         raise ValueError(f"PTZ BCD angle cannot be negative: {degrees}")
     return int(f"{tenths:d}", 16)
