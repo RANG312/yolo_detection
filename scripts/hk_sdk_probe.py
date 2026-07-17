@@ -10,7 +10,6 @@ import platform
 import time
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 SDK_BASE_DIR = ROOT / "HK_SDK"
 if platform.machine().lower() in {"aarch64", "arm64"}:
@@ -297,7 +296,9 @@ def configure_sdk_paths(sdk: ctypes.CDLL) -> None:
     sdk.NET_DVR_SetSDKInitCfg(2, ctypes.byref(sdk_path))
     sdk.NET_DVR_SetSDKInitCfg(
         3,
-        ctypes.create_string_buffer(str(_first_existing("libcrypto.so.3", "libcrypto.so.1.1", "libcrypto.so")).encode("utf-8")),
+        ctypes.create_string_buffer(
+            str(_first_existing("libcrypto.so.3", "libcrypto.so.1.1", "libcrypto.so")).encode("utf-8")
+        ),
     )
     sdk.NET_DVR_SetSDKInitCfg(
         4,
@@ -506,7 +507,9 @@ def main() -> int:
     parser.add_argument("--nudge-speed", type=int, default=1)
     parser.add_argument("--read-slave-calib-ability", action="store_true")
     parser.add_argument("--read-slave-calib", action="store_true")
-    parser.add_argument("--read-gis-fov", action="store_true", help="Read current optical FOV from NET_DVR_GET_GISINFO.")
+    parser.add_argument(
+        "--read-gis-fov", action="store_true", help="Read current optical FOV from NET_DVR_GET_GISINFO."
+    )
     args = parser.parse_args()
 
     if not args.password:

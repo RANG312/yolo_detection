@@ -339,7 +339,7 @@ colcon build --packages-select ros2_recognition_service
 编译完成后 source 环境：
 
 ```bash
-source /opt/ros/<你的发行版>/setup.bash
+source /opt/ros/ < 你的发行版 > /setup.bash
 source ~/ros2_ws/install/setup.bash
 ```
 
@@ -518,7 +518,7 @@ ros2 launch ros2_recognition_service recognition.launch.py \
 ### 9.1 终端 1：启动节点
 
 ```bash
-source /opt/ros/<你的发行版>/setup.bash
+source /opt/ros/ < 你的发行版 > /setup.bash
 source ~/ros2_ws/install/setup.bash
 ros2 launch ros2_recognition_service recognition.launch.py device:=cpu
 ```
@@ -526,7 +526,7 @@ ros2 launch ros2_recognition_service recognition.launch.py device:=cpu
 ### 9.2 终端 2：订阅回调 topic
 
 ```bash
-source /opt/ros/<你的发行版>/setup.bash
+source /opt/ros/ < 你的发行版 > /setup.bash
 source ~/ros2_ws/install/setup.bash
 ros2 topic echo /api/v1/recognition/callback
 ```
@@ -545,7 +545,7 @@ ros2 service list | grep recognition
 
 ```bash
 ros2 service call /api/v1/recognition/tasks/submit ros2_recognition_service/srv/SubmitRecognitionTask \
-'{request_json: "{\"req_id\":\"demo-0001\",\"image_path\":\"/data/test/meter.jpg\",\"data_type\":[{\"recognize_type\":\"1\",\"recognize_subtype\":\"default\"}],\"extra_info\":\"{\\\"debug_center\\\": false}\"}"}'
+  '{request_json: "{\"req_id\":\"demo-0001\",\"image_path\":\"/data/test/meter.jpg\",\"data_type\":[{\"recognize_type\":\"1\",\"recognize_subtype\":\"default\"}],\"extra_info\":\"{\\\"debug_center\\\": false}\"}"}'
 ```
 
 如果请求合法，会立即返回一个 `response_json`，其中 `task_status` 通常是 `processing`。
@@ -554,7 +554,7 @@ ros2 service call /api/v1/recognition/tasks/submit ros2_recognition_service/srv/
 
 ```bash
 ros2 service call /api/v1/recognition/tasks/get ros2_recognition_service/srv/GetRecognitionTask \
-'{req_id: "demo-0001"}'
+  '{req_id: "demo-0001"}'
 ```
 
 任务完成后，返回的 `response_json` 里可以看到：

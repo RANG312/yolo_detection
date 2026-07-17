@@ -3,7 +3,6 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
-
 SCRIPT_PATH = Path(__file__).resolve().parents[1] / "recognition_http_server" / "utils" / "capture_gimbal_frames.py"
 SPEC = importlib.util.spec_from_file_location("capture_gimbal_frames", SCRIPT_PATH)
 capture_gimbal_frames = importlib.util.module_from_spec(SPEC)

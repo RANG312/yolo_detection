@@ -7,4 +7,4 @@ test: /home/robot/wl/FireExtinguisher.v2i.voc/Dataset/images/test
 nc: 1
 
 # class names
-names: ['extinguisher']
+names: ["extinguisher"]
