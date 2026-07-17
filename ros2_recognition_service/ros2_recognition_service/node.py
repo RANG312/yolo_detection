@@ -13,9 +13,9 @@ from uuid import uuid4
 
 import cv2
 import rclpy
-from rclpy.utilities import remove_ros_args
 from cv_bridge import CvBridge
 from rclpy.node import Node
+from rclpy.utilities import remove_ros_args
 from sensor_msgs.msg import Image
 from std_msgs.msg import String
 
@@ -24,12 +24,14 @@ repo_root = Path(os.environ.get("RECOGNITION_REPO_ROOT", DEFAULT_REPO_ROOT)).res
 if str(repo_root) not in sys.path:
     sys.path.insert(0, str(repo_root))
 
+from ros2_recognition_service.srv import GetRecognitionTask, SubmitRecognitionTask
 from server import (
     DEFAULT_CALLBACK_PORT,
     DEFAULT_CONF,
     DEFAULT_DEVICE,
     DEFAULT_FIRE_MODEL_PATH,
     DEFAULT_HOST,
+    DEFAULT_IMGSZ,
     DEFAULT_MAX_VALUE,
     DEFAULT_METER_MODEL_PATH,
     DEFAULT_MIN_VALUE,
@@ -37,23 +39,24 @@ from server import (
     DEFAULT_REQUEST_TIMEOUT,
     DEFAULT_RESULT_ROOT,
     DEFAULT_SAFEHAT_MODEL_PATH,
-    DEFAULT_IMGSZ,
     RecognitionService,
     TaskState,
     make_error_payload,
     now_text,
 )
 
-from ros2_recognition_service.srv import GetRecognitionTask, SubmitRecognitionTask
-
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="ROS 2 recognition service node.")
     parser.add_argument("--node-name", default="recognition_service_node", help="ROS 2 node name.")
     parser.add_argument("--model", default=DEFAULT_METER_MODEL_PATH, help="Meter model path (.pt or .onnx).")
-    parser.add_argument("--fire-model", default=DEFAULT_FIRE_MODEL_PATH, help="Fire detection model path (.pt or .onnx).")
     parser.add_argument(
-        "--safehat-model", default=DEFAULT_SAFEHAT_MODEL_PATH, help="Safehat/person detection model path (.pt or .onnx)."
+        "--fire-model", default=DEFAULT_FIRE_MODEL_PATH, help="Fire detection model path (.pt or .onnx)."
+    )
+    parser.add_argument(
+        "--safehat-model",
+        default=DEFAULT_SAFEHAT_MODEL_PATH,
+        help="Safehat/person detection model path (.pt or .onnx).",
     )
     parser.add_argument("--imgsz", type=int, default=DEFAULT_IMGSZ, help="Inference image size.")
     parser.add_argument("--conf", type=float, default=DEFAULT_CONF, help="Inference confidence threshold.")
@@ -61,7 +64,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--min-value", type=float, default=DEFAULT_MIN_VALUE, help="Default meter minimum value.")
     parser.add_argument("--max-value", type=float, default=DEFAULT_MAX_VALUE, help="Default meter maximum value.")
     parser.add_argument("--result-root", type=Path, default=DEFAULT_RESULT_ROOT, help="Result root directory.")
-    parser.add_argument("--callback-port", type=int, default=DEFAULT_CALLBACK_PORT, help="Reserved callback port field for parity.")
+    parser.add_argument(
+        "--callback-port", type=int, default=DEFAULT_CALLBACK_PORT, help="Reserved callback port field for parity."
+    )
     parser.add_argument(
         "--request-timeout", type=int, default=DEFAULT_REQUEST_TIMEOUT, help="HTTP download timeout in seconds."
     )
@@ -127,7 +132,9 @@ class RecognitionServiceNode(Node):
         self._bridge = CvBridge()
         self._callback_publisher = self.create_publisher(String, config.callback_topic, 10)
         self.service = RosRecognitionService(config, self._callback_publisher)
-        self._submit_service = self.create_service(SubmitRecognitionTask, config.submit_service, self._handle_submit_task)
+        self._submit_service = self.create_service(
+            SubmitRecognitionTask, config.submit_service, self._handle_submit_task
+        )
         self._status_service = self.create_service(GetRecognitionTask, config.status_service, self._handle_get_task)
         self._image_subscription = None
 

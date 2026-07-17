@@ -81,7 +81,7 @@ write_hikvision_env_file() {
   local local_ip="$6"
 
   mkdir -p "$(dirname "${HIKVISION_ENV_PATH}")"
-  cat > "${HIKVISION_ENV_PATH}" <<EOF
+  cat > "${HIKVISION_ENV_PATH}" << EOF
 HIK_HOST="$(systemd_env_escape "${host}")"
 HIK_USERNAME="$(systemd_env_escape "${username}")"
 HIK_PASSWORD="$(systemd_env_escape "${password}")"
@@ -136,8 +136,8 @@ find_conda_base() {
 
   if [[ -n "${CONDA_EXE:-}" && -x "${CONDA_EXE}" ]]; then
     candidate="$(cd "$(dirname "${CONDA_EXE}")/.." && pwd)"
-  elif command -v conda >/dev/null 2>&1; then
-    candidate="$(conda info --base 2>/dev/null || true)"
+  elif command -v conda > /dev/null 2>&1; then
+    candidate="$(conda info --base 2> /dev/null || true)"
     if [[ -z "${candidate}" ]]; then
       candidate="$(cd "$(dirname "$(command -v conda)")/.." && pwd)"
     fi
@@ -227,7 +227,7 @@ activate_env_cleanly() {
 }
 
 run_conda_unpack_if_present() {
-  if command -v conda-unpack >/dev/null 2>&1; then
+  if command -v conda-unpack > /dev/null 2>&1; then
     log "执行 conda-unpack 修正 prefix"
     conda-unpack
   else
@@ -245,13 +245,13 @@ find_cudss_library_dir() {
     /usr/lib/aarch64-linux-gnu/libcudss/12 \
     /usr/local/cuda/lib64 \
     /usr/local/cuda/targets/aarch64-linux/lib; do
-    if compgen -G "${path}/libcudss.so*" >/dev/null; then
+    if compgen -G "${path}/libcudss.so*" > /dev/null; then
       echo "${path}"
       return 0
     fi
   done
 
-  path="$(ldconfig -p 2>/dev/null | awk '/libcudss\.so/ {print $NF; exit}')"
+  path="$(ldconfig -p 2> /dev/null | awk '/libcudss\.so/ {print $NF; exit}')"
   if [[ -n "${path}" ]]; then
     dirname "${path}"
     return 0
@@ -290,13 +290,13 @@ find_cupti_library_dir() {
     /usr/local/cuda-12.6/targets/aarch64-linux/lib \
     /usr/local/cuda-12.6/extras/CUPTI/lib64 \
     /usr/lib/aarch64-linux-gnu; do
-    if compgen -G "${path}/libcupti.so*" >/dev/null; then
+    if compgen -G "${path}/libcupti.so*" > /dev/null; then
       echo "${path}"
       return 0
     fi
   done
 
-  path="$(ldconfig -p 2>/dev/null | awk '/libcupti\.so/ {print $NF; exit}')"
+  path="$(ldconfig -p 2> /dev/null | awk '/libcupti\.so/ {print $NF; exit}')"
   if [[ -n "${path}" ]]; then
     dirname "${path}"
     return 0
@@ -329,10 +329,10 @@ find_hik_sdk_library_dir() {
 
   arch="$(uname -m)"
   case "${arch}" in
-    aarch64|arm64)
+    aarch64 | arm64)
       path="${SCRIPT_DIR}/HK_SDK/HK_SDK_arm64_Linux/lib/linux"
       ;;
-    x86_64|amd64)
+    x86_64 | amd64)
       for path in \
         "${SCRIPT_DIR}/HK_SDK/HK_SDK_x86_Linux/lib/linux" \
         "${SCRIPT_DIR}/HK_SDK/HK_SDK_x86_Linux/HCNetSDKV6.1.11.5_build20251204_linux64_ZH/库文件" \
@@ -368,7 +368,7 @@ write_conda_hooks() {
   mkdir -p "${activate_dir}" "${deactivate_dir}"
   rm -f "${activate_dir}/libcudss.sh" "${deactivate_dir}/libcudss.sh"
 
-  cat > "${activate_hook}" <<EOF
+  cat > "${activate_hook}" << EOF
 #!/usr/bin/env bash
 export _YOLO_JETSON_OLD_LD_LIBRARY_PATH="\${LD_LIBRARY_PATH:-}"
 for _YOLO_JETSON_LIB_DIR in \\
@@ -382,7 +382,7 @@ done
 unset _YOLO_JETSON_LIB_DIR
 EOF
 
-  cat > "${deactivate_hook}" <<'EOF'
+  cat > "${deactivate_hook}" << 'EOF'
 #!/usr/bin/env bash
 if [[ -n "${_YOLO_JETSON_OLD_LD_LIBRARY_PATH+x}" ]]; then
   export LD_LIBRARY_PATH="${_YOLO_JETSON_OLD_LD_LIBRARY_PATH}"
@@ -428,7 +428,7 @@ write_systemd_service_file() {
   [[ -f "${server_script}" ]] || fail "未找到服务入口脚本: ${server_script}"
   [[ -d "${hik_sdk_lib_dir}" ]] || fail "Invalid Hikvision SDK path: ${hik_sdk_lib_dir}"
 
-  sudo tee "${service_path}" >/dev/null <<EOF
+  sudo tee "${service_path}" > /dev/null << EOF
 [Unit]
 Description=AI Detection Server
 After=network.target
@@ -489,7 +489,7 @@ ensure_runtime_permissions() {
 }
 
 ensure_cython_installed() {
-  if python -c 'import Cython' >/dev/null 2>&1; then
+  if python -c 'import Cython' > /dev/null 2>&1; then
     log "已检测到 Cython"
     return
   fi
@@ -499,7 +499,7 @@ ensure_cython_installed() {
 }
 
 ensure_gcc_installed() {
-  command -v gcc >/dev/null 2>&1 || fail "未找到 gcc，请先安装构建工具: sudo apt install build-essential"
+  command -v gcc > /dev/null 2>&1 || fail "未找到 gcc，请先安装构建工具: sudo apt install build-essential"
   log "已检测到 gcc: $(gcc --version | head -n 1)"
 }
 
@@ -518,7 +518,7 @@ build_protected_modules() {
   ensure_cython_installed
   log "编译核心源码为 Python 扩展模块，并删除已保护的原始源码"
   python "${PROTECTED_BUILD_SCRIPT}" build_ext --inplace --remove-sources
-  python - <<'PY'
+  python - << 'PY'
 from pathlib import Path
 
 import recognition_http_server.dial_reading.pipeline as pipeline
