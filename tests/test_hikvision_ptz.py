@@ -28,13 +28,7 @@ def test_default_sdk_lib_dir_prefers_flat_x86_sdk_when_present(monkeypatch, tmp_
 def test_default_sdk_lib_dir_falls_back_to_nested_x86_sdk(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(hikvision_ptz, "SDK_BASE_DIR", tmp_path / "HK_SDK")
 
-    expected = (
-        tmp_path
-        / "HK_SDK"
-        / "HK_SDK_x86_Linux"
-        / "HCNetSDKV6.1.11.5_build20251204_linux64_ZH"
-        / "库文件"
-    )
+    expected = tmp_path / "HK_SDK" / "HK_SDK_x86_Linux" / "HCNetSDKV6.1.11.5_build20251204_linux64_ZH" / "库文件"
     expected.mkdir(parents=True)
 
     assert hikvision_ptz._default_sdk_lib_dir("x86_64") == expected
@@ -50,7 +44,7 @@ def test_configure_sdk_paths_accepts_openssl_1_1_dependencies(tmp_path) -> None:
         (tmp_path / name).touch()
 
     class FakeSDKPathConfig:
-        def NET_DVR_SetSDKInitCfg(self, cfg_type, value):  # noqa: ANN001, ANN202
+        def NET_DVR_SetSDKInitCfg(self, cfg_type, value):
             if cfg_type in {3, 4}:
                 calls.append((cfg_type, ctypes.cast(value, ctypes.c_char_p).value))
             return True
@@ -67,7 +61,7 @@ class FakeSDK:
     def __init__(self) -> None:
         self.calls: list[tuple[int, int, int, int, int]] = []
 
-    def NET_DVR_PTZControlWithSpeed_Other(self, user_id, channel, command, stop, speed):  # noqa: ANN001, ANN202
+    def NET_DVR_PTZControlWithSpeed_Other(self, user_id, channel, command, stop, speed):
         self.calls.append((user_id, channel, command, stop, speed))
         return True
 
@@ -164,7 +158,7 @@ def test_nudge_ptz_retries_transient_stop_failure(monkeypatch) -> None:
         def __init__(self) -> None:
             self.calls: list[tuple[int, int, int, int, int]] = []
 
-        def NET_DVR_PTZControlWithSpeed_Other(self, user_id, channel, command, stop, speed):  # noqa: ANN001, ANN202
+        def NET_DVR_PTZControlWithSpeed_Other(self, user_id, channel, command, stop, speed):
             self.calls.append((user_id, channel, command, stop, speed))
             return stop == 0 or len([call for call in self.calls if call[3] == 1]) >= 2
 
@@ -188,7 +182,7 @@ class FakeFOVSDK:
         self.command = None
         self.channel = None
 
-    def NET_DVR_GetSTDConfig(self, user_id, command, config):  # noqa: ANN001, ANN202
+    def NET_DVR_GetSTDConfig(self, user_id, command, config):
         self.command = command
         cfg = ctypes.cast(config, ctypes.POINTER(hikvision_ptz.NET_DVR_STD_CONFIG)).contents
         self.channel = ctypes.cast(cfg.lpCondBuffer, ctypes.POINTER(ctypes.c_int)).contents.value
@@ -230,10 +224,10 @@ def test_controller_can_read_and_restore_absolute_ptz_position(monkeypatch) -> N
         def NET_DVR_GetLastError(self) -> int:
             return 0
 
-        def NET_DVR_Logout(self, user_id):  # noqa: ANN001, ANN202
+        def NET_DVR_Logout(self, user_id):
             calls.append(("logout", user_id))
 
-        def NET_DVR_Cleanup(self):  # noqa: ANN202
+        def NET_DVR_Cleanup(self):
             calls.append("cleanup")
 
     sdk = FakeControllerSDK()
@@ -245,7 +239,7 @@ def test_controller_can_read_and_restore_absolute_ptz_position(monkeypatch) -> N
     monkeypatch.setattr(hikvision_ptz, "_login", lambda sdk_arg, config: 7)
     monkeypatch.setattr(hikvision_ptz, "_read_ptz", lambda sdk_arg, user_id, channel: position)
 
-    def fake_set_ptz(sdk_arg, user_id, channel, pan_deg, tilt_deg, zoom_deg):  # noqa: ANN001, ANN202
+    def fake_set_ptz(sdk_arg, user_id, channel, pan_deg, tilt_deg, zoom_deg):
         calls.append(("set", user_id, channel, pan_deg, tilt_deg, zoom_deg))
 
     monkeypatch.setattr(hikvision_ptz, "_set_ptz", fake_set_ptz)
@@ -271,11 +265,11 @@ def test_controller_reuses_sdk_session_until_closed(monkeypatch) -> None:
         def NET_DVR_GetLastError(self) -> int:
             return 0
 
-        def NET_DVR_Logout(self, user_id):  # noqa: ANN001, ANN202
+        def NET_DVR_Logout(self, user_id):
             calls.append(("logout", user_id))
             return True
 
-        def NET_DVR_Cleanup(self):  # noqa: ANN202
+        def NET_DVR_Cleanup(self):
             calls.append("cleanup")
             return True
 
@@ -318,11 +312,11 @@ def test_controller_read_zoom_limits_prefers_configured_max_zoom_ratio(monkeypat
         def NET_DVR_GetLastError(self) -> int:
             return 0
 
-        def NET_DVR_Logout(self, user_id):  # noqa: ANN001, ANN202
+        def NET_DVR_Logout(self, user_id):
             calls.append(("logout", user_id))
             return True
 
-        def NET_DVR_Cleanup(self):  # noqa: ANN202
+        def NET_DVR_Cleanup(self):
             calls.append("cleanup")
             return True
 
@@ -356,11 +350,11 @@ def test_controller_read_zoom_limits_skips_invalid_inferred_max_zoom(monkeypatch
         def NET_DVR_GetLastError(self) -> int:
             return 0
 
-        def NET_DVR_Logout(self, user_id):  # noqa: ANN001, ANN202
+        def NET_DVR_Logout(self, user_id):
             calls.append(("logout", user_id))
             return True
 
-        def NET_DVR_Cleanup(self):  # noqa: ANN202
+        def NET_DVR_Cleanup(self):
             calls.append("cleanup")
             return True
 
@@ -373,9 +367,7 @@ def test_controller_read_zoom_limits_skips_invalid_inferred_max_zoom(monkeypatch
     monkeypatch.setattr(hikvision_ptz, "_login", lambda sdk_arg, config: 7)
     monkeypatch.setattr(hikvision_ptz, "_read_gis_fov", lambda sdk_arg, user_id, channel: fov)
 
-    controller = hikvision_ptz.HikvisionPTZController(
-        HikvisionPTZConfig(host="192.168.1.64", password="secret")
-    )
+    controller = hikvision_ptz.HikvisionPTZController(HikvisionPTZConfig(host="192.168.1.64", password="secret"))
 
     assert controller.read_zoom_limits() is None
 
@@ -389,7 +381,7 @@ def test_capture_image_uses_explicit_snapshot_channel(monkeypatch) -> None:
         def raise_for_status(self) -> None:
             captured["raised"] = True
 
-    def fake_get(url, auth, timeout):  # noqa: ANN001, ANN202
+    def fake_get(url, auth, timeout):
         captured["url"] = url
         captured["timeout"] = timeout
         return FakeResponse()
@@ -423,7 +415,7 @@ def test_capture_image_falls_back_to_secondary_stream_when_primary_is_unavailabl
                 error.response = self
                 raise error
 
-    def fake_get(url, auth, timeout):  # noqa: ANN001, ANN202
+    def fake_get(url, auth, timeout):
         urls.append(url)
         if url.endswith("/101/picture"):
             return FakeResponse(503)

@@ -12,15 +12,17 @@
 ## 快速开始
 
 ### http server
+
 - conda环境部署：运行 `bash deploy_yolo_jetson_env.sh` 自动部署环境，同时会删除相关的安装包和 `.git` 节省空间，并添加自启的 `systemd` 服务；交付时可通过 `BUILD_PROTECTED=1` 启用核心源码编译
-- 日志：` results/http_service/logs/server.log `
-- 修改参数： ` recognition_http_server/constants.py ` 
+- 日志：`results/http_service/logs/server.log`
+- 修改参数： `recognition_http_server/constants.py`
 
 ### ROS2 humble
+
 - 功能暂不完全，暂无需求
-- 先运行 ``` bash ros2_recognition_service/deploy_ros2_ws.sh``` 构建ros2工作区并编译
-- 再运行 ``` source ./ros2_recognition_service/source_ros2_ws.bash ```
-- 接着ros2 launch 节点 ``` bash ros2_recognition_service/launch_recognition_service.sh ```
+- 先运行 ` bash ros2_recognition_service/deploy_ros2_ws.sh` 构建ros2工作区并编译
+- 再运行 `source ./ros2_recognition_service/source_ros2_ws.bash`
+- 接着ros2 launch 节点 `bash ros2_recognition_service/launch_recognition_service.sh`
 - 可以在 `ros2_recognition_service/config/recognition.yaml` 中设置相关配置参数
 - 详细介绍参考 `ros2_recognition_service/README.md `
 
@@ -510,16 +512,16 @@ meter ptz alignment checked:
 
 理想状态是表盘在 1 到 3 轮内逐渐接近画面中心，不在目标两侧反复跳动。参数调整规则：
 
-| 现象 | 调整方式 |
-|------|----------|
-| pan 每次移动过量 | 增大 `--ptz-pan-nudge-degrees-per-second` |
-| pan 移动不足 | 减小 `--ptz-pan-nudge-degrees-per-second` |
-| tilt 每次移动过量 | 增大 `--ptz-tilt-nudge-degrees-per-second` |
-| tilt 移动不足 | 减小 `--ptz-tilt-nudge-degrees-per-second` |
-| 初次跳动幅度太大 | 减小 `--ptz-align-max-delta-deg` |
-| 中心附近频繁微调 | 适当增大 `--ptz-align-threshold-deg` |
-| zoom 超过设备能力 | 设置 `--ptz-zoom-max-ratio` |
-| zoom 过快 | 减小 `--ptz-zoom-nudge-seconds` 或 `--ptz-zoom-nudge-steps` |
+| 现象              | 调整方式                                                    |
+| ----------------- | ----------------------------------------------------------- |
+| pan 每次移动过量  | 增大 `--ptz-pan-nudge-degrees-per-second`                   |
+| pan 移动不足      | 减小 `--ptz-pan-nudge-degrees-per-second`                   |
+| tilt 每次移动过量 | 增大 `--ptz-tilt-nudge-degrees-per-second`                  |
+| tilt 移动不足     | 减小 `--ptz-tilt-nudge-degrees-per-second`                  |
+| 初次跳动幅度太大  | 减小 `--ptz-align-max-delta-deg`                            |
+| 中心附近频繁微调  | 适当增大 `--ptz-align-threshold-deg`                        |
+| zoom 超过设备能力 | 设置 `--ptz-zoom-max-ratio`                                 |
+| zoom 过快         | 减小 `--ptz-zoom-nudge-seconds` 或 `--ptz-zoom-nudge-steps` |
 
 每轮参数调整建议控制在 `10%` 到 `20%`。
 
