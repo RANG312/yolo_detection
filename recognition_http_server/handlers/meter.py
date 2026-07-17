@@ -10,7 +10,7 @@ from recognition_http_server.helpers import build_error_data_entry, build_meter_
 from recognition_http_server.ptz_alignment import auto_tune_ptz_settings
 
 
-def resolve_current_ptz_runtime(service, base_config=None):  # noqa: ANN001, ANN201
+def resolve_current_ptz_runtime(service, base_config=None):
     """Return PTZ config and controller tuned from the current SDK FOV."""
     config = base_config or service.ptz_alignment_config
     if not getattr(config, "enabled", False):
@@ -51,7 +51,7 @@ def resolve_current_ptz_runtime(service, base_config=None):  # noqa: ANN001, ANN
     return current_config, tuned_controller
 
 
-def resolve_current_ptz_alignment_config(service, base_config=None):  # noqa: ANN001, ANN201
+def resolve_current_ptz_alignment_config(service, base_config=None):
     """Return PTZ alignment config with current SDK FOV when alignment is enabled."""
     return resolve_current_ptz_runtime(service, base_config)[0]
 
@@ -65,11 +65,9 @@ def run_pointer_meter_recognition(
     debug_center: bool,
     scale: float,
 ) -> list[dict[str, str]]:
-    """
-    执行指针表计读数，并返回应用量程后的最终业务值。
+    """执行指针表计读数，并返回应用量程后的最终业务值。.
 
-    底层表盘模型输出的仍是归一化读数，这里会在返回前叠加解析后的满量
-    程配置，得到最终读数。
+    底层表盘模型输出的仍是归一化读数，这里会在返回前叠加解析后的满量 程配置，得到最终读数。
     """
     predict_args = build_meter_predict_args(service.config, visualize_path, debug_center=debug_center)
     predict_args.ptz_alignment_config, predict_args.ptz_controller = resolve_current_ptz_runtime(service)
@@ -124,12 +122,12 @@ def run_pointer_meter_recognition(
     return recognize_items
 
 
-def run_digital_meter_recognition(service, local_image_path: Path, data_types: list[dict[str, str]], visualize_path: Path, extra_info: dict[str, str]) -> list[dict[str, str]]:
-    """
-    数码表链路的占位实现。
+def run_digital_meter_recognition(
+    service, local_image_path: Path, data_types: list[dict[str, str]], visualize_path: Path, extra_info: dict[str, str]
+) -> list[dict[str, str]]:
+    """数码表链路的占位实现。.
 
-    后续会在这里接入 ROI 检测、ROI 预处理、OCR 推理以及数值清洗和校
-    验逻辑。
+    后续会在这里接入 ROI 检测、ROI 预处理、OCR 推理以及数值清洗和校 验逻辑。
     """
     del extra_info
     image = cv2.imread(str(local_image_path))

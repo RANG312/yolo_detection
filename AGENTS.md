@@ -8,15 +8,15 @@ This repository targets NVIDIA Jetson Orin NX deployments and extends Ultralytic
 
 The HTTP service uses a handler registry pattern for recognition tasks. Avoid adding `if`/`elif` task-dispatch chains; add new task types by registering a `TaskHandler` in `RecognitionService._build_task_handlers()`.
 
-| Task | `recognize_type` | Internal kind | Handler |
-|------|------------------|---------------|---------|
-| Dial meter reading | `"1"` | `meter` | `recognition_http_server/handlers/meter.py` |
-| Fire detection | `"6"` | `fire` | `recognition_http_server/handlers/detection.py` |
-| Safety helmet | `"7"` | `safehat` | `recognition_http_server/handlers/detection.py` |
-| Fire-protection facilities | `"8"` | `fire_protection_facilities` | `recognition_http_server/handlers/detection.py` |
-| Person fall-down | `"9"` | `person_fall_down` | `recognition_http_server/handlers/detection.py` |
-| Fire extinguisher | `"10"` | `fire_extinguisher` | `recognition_http_server/handlers/detection.py` |
-| People and cars | `"11"` | `person_and_cars` | `recognition_http_server/handlers/detection.py` |
+| Task                       | `recognize_type` | Internal kind                | Handler                                         |
+| -------------------------- | ---------------- | ---------------------------- | ----------------------------------------------- |
+| Dial meter reading         | `"1"`            | `meter`                      | `recognition_http_server/handlers/meter.py`     |
+| Fire detection             | `"6"`            | `fire`                       | `recognition_http_server/handlers/detection.py` |
+| Safety helmet              | `"7"`            | `safehat`                    | `recognition_http_server/handlers/detection.py` |
+| Fire-protection facilities | `"8"`            | `fire_protection_facilities` | `recognition_http_server/handlers/detection.py` |
+| Person fall-down           | `"9"`            | `person_fall_down`           | `recognition_http_server/handlers/detection.py` |
+| Fire extinguisher          | `"10"`           | `fire_extinguisher`          | `recognition_http_server/handlers/detection.py` |
+| People and cars            | `"11"`           | `person_and_cars`            | `recognition_http_server/handlers/detection.py` |
 
 Key modules:
 
