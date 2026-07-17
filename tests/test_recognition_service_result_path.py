@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from pathlib import Path
-from types import SimpleNamespace
 import sys
 import threading
 import types
+from pathlib import Path
+from types import SimpleNamespace
 
 ultralytics_stub = types.ModuleType("ultralytics")
 ultralytics_stub.YOLO = object
@@ -59,7 +59,7 @@ def test_create_task_records_timestamped_result_dir_name(monkeypatch) -> None:
     import recognition_http_server.service as service_module
 
     class ThreadStub:
-        def __init__(self, *args, **kwargs):  # noqa: ANN002, ANN003
+        def __init__(self, *args, **kwargs):
             pass
 
         def start(self) -> None:
@@ -90,13 +90,13 @@ def test_failed_recognition_copies_image_path_to_result_path(tmp_path: Path) -> 
     service.config = SimpleNamespace(request_timeout=1)
     service.logger = SimpleNamespace(info=lambda *args, **kwargs: None, exception=lambda *args, **kwargs: None)
 
-    def prepare_image(*args, **kwargs):  # noqa: ANN002, ANN003, ANN202
+    def prepare_image(*args, **kwargs):
         return image_path
 
-    def resolve_task_kind(*args, **kwargs):  # noqa: ANN002, ANN003, ANN202
+    def resolve_task_kind(*args, **kwargs):
         return "meter"
 
-    def runner(local_image_path, data_type, image_result_path, extra_info, debug_center):  # noqa: ANN001, ANN202
+    def runner(local_image_path, data_type, image_result_path, extra_info, debug_center):
         del local_image_path, image_result_path, extra_info, debug_center
         return [
             {
@@ -147,15 +147,15 @@ def test_successful_meter_recognition_uses_timestamped_result_dir(tmp_path: Path
     service.config = SimpleNamespace(request_timeout=1)
     service.logger = SimpleNamespace(info=lambda *args, **kwargs: None, exception=lambda *args, **kwargs: None)
 
-    def prepare_image(*args, **kwargs):  # noqa: ANN002, ANN003, ANN202
+    def prepare_image(*args, **kwargs):
         return image_path
 
-    def resolve_task_kind(*args, **kwargs):  # noqa: ANN002, ANN003, ANN202
+    def resolve_task_kind(*args, **kwargs):
         return "meter"
 
     result_dir_names = []
 
-    def runner(local_image_path, data_type, image_result_path, extra_info, debug_center):  # noqa: ANN001, ANN202
+    def runner(local_image_path, data_type, image_result_path, extra_info, debug_center):
         del local_image_path, extra_info, debug_center
         result_dir_names.append(image_result_path.parent.name)
         image_result_path.write_bytes(b"result")

@@ -2,8 +2,21 @@ train: ../train/images
 val: ../valid/images
 test: ../test/images
 nc: 12
-names: ['air-outlet-not-stacking', 'air-outlet-stacking', 'evacuation-off', 'evacuation-on', 'evacuation-stacking', 'exit-off', 'exit-on', 'fire-door-close', 'fire-door-open', 'fire-door-stacking', 'fire-hydrant-not-stacking', 'fire-hydrant-stacking']
-
+names:
+  [
+    "air-outlet-not-stacking",
+    "air-outlet-stacking",
+    "evacuation-off",
+    "evacuation-on",
+    "evacuation-stacking",
+    "exit-off",
+    "exit-on",
+    "fire-door-close",
+    "fire-door-open",
+    "fire-door-stacking",
+    "fire-hydrant-not-stacking",
+    "fire-hydrant-stacking",
+  ]
 #0：通风口无堵塞
 #1：通风口堵塞
 #2：疏散指示灯熄灭

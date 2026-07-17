@@ -17,7 +17,12 @@ from recognition_http_server.dial_reading.geometry import (
     detect_tick_point,
     select_arc_and_ratio,
 )
-from recognition_http_server.dial_reading.pipeline import infer_annotation_mode, load_model, predict_image_instances, predict_single_image
+from recognition_http_server.dial_reading.pipeline import (
+    infer_annotation_mode,
+    load_model,
+    predict_image_instances,
+    predict_single_image,
+)
 from recognition_http_server.dial_reading.visualization import save_canvas
 
 __all__ = [

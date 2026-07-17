@@ -16,7 +16,7 @@ from recognition_http_server.ptz_alignment import auto_tune_ptz_settings
 
 
 class PrintLogger:
-    def info(self, message: str, *args) -> None:  # noqa: ANN002
+    def info(self, message: str, *args) -> None:
         print(message % args if args else message)
 
 
@@ -31,15 +31,23 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--imgsz", type=int, default=640, help="YOLO first-stage inference image size.")
     parser.add_argument("--conf", type=float, default=0.25, help="YOLO detection confidence threshold.")
     # FOV maps pixel offset to approximate PTZ angle: delta = offset_px / image_size * fov_deg.
-    parser.add_argument("--horizontal-fov-deg", type=float, default=2.90, help="Fallback horizontal optical field of view.")
+    parser.add_argument(
+        "--horizontal-fov-deg", type=float, default=2.90, help="Fallback horizontal optical field of view."
+    )
     parser.add_argument("--vertical-fov-deg", type=float, default=1.63, help="Fallback vertical optical field of view.")
     parser.set_defaults(auto_fov=True, auto_tune=True)
     fov_group = parser.add_mutually_exclusive_group()
-    fov_group.add_argument("--auto-fov", dest="auto_fov", action="store_true", help="Read current FOV from HCNetSDK GIS info.")
+    fov_group.add_argument(
+        "--auto-fov", dest="auto_fov", action="store_true", help="Read current FOV from HCNetSDK GIS info."
+    )
     fov_group.add_argument("--no-auto-fov", dest="auto_fov", action="store_false", help="Use manual FOV arguments.")
     tune_group = parser.add_mutually_exclusive_group()
-    tune_group.add_argument("--auto-tune", dest="auto_tune", action="store_true", help="Tune PTZ thresholds and nudge settings from FOV.")
-    tune_group.add_argument("--no-auto-tune", dest="auto_tune", action="store_false", help="Use explicit PTZ tuning arguments.")
+    tune_group.add_argument(
+        "--auto-tune", dest="auto_tune", action="store_true", help="Tune PTZ thresholds and nudge settings from FOV."
+    )
+    tune_group.add_argument(
+        "--no-auto-tune", dest="auto_tune", action="store_false", help="Use explicit PTZ tuning arguments."
+    )
     parser.add_argument(
         "--threshold-deg",
         type=float,
@@ -59,7 +67,9 @@ def parse_args() -> argparse.Namespace:
         help="Maximum number of detect-move-capture correction passes before final ROI reading.",
     )
     # Nudge parameters translate requested angle to continuous PTZControl duration.
-    parser.add_argument("--nudge-speed", type=int, default=1, help="Hikvision PTZ speed level passed to SDK, usually 1-7.")
+    parser.add_argument(
+        "--nudge-speed", type=int, default=1, help="Hikvision PTZ speed level passed to SDK, usually 1-7."
+    )
     parser.add_argument(
         "--nudge-degrees-per-second",
         type=float,
@@ -136,7 +146,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def describe_offset(image, model, predict_args, alignment_config: PTZAlignmentConfig, label: str) -> None:  # noqa: ANN001
+def describe_offset(image, model, predict_args, alignment_config: PTZAlignmentConfig, label: str) -> None:
     from recognition_http_server.dial_reading.detections import collect_all_detections
     from recognition_http_server.ptz_alignment import compute_alignment_request
 
@@ -160,12 +170,10 @@ def describe_offset(image, model, predict_args, alignment_config: PTZAlignmentCo
         alignment_config.vertical_fov_deg,
     )
     print(
-        (
-            f"{label}: selected_conf={float(gauge['conf']):.4f} "
-            f"dx={request.dx_px:.1f}px dy={request.dy_px:.1f}px "
-            f"pan_delta={request.pan_delta_deg:.3f} tilt_delta={request.tilt_delta_deg:.3f} "
-            f"box={tuple(round(float(value), 1) for value in request.gauge_box)}"
-        )
+        f"{label}: selected_conf={float(gauge['conf']):.4f} "
+        f"dx={request.dx_px:.1f}px dy={request.dy_px:.1f}px "
+        f"pan_delta={request.pan_delta_deg:.3f} tilt_delta={request.tilt_delta_deg:.3f} "
+        f"box={tuple(round(float(value), 1) for value in request.gauge_box)}"
     )
 
 
@@ -194,7 +202,7 @@ def main() -> int:
     if args.auto_fov:
         try:
             fov = HikvisionPTZController(base_config, logger=logger).read_field_of_view()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             print(f"auto_fov_failed: {exc}; using fallback hfov={horizontal_fov_deg:.3f} vfov={vertical_fov_deg:.3f}")
         else:
             horizontal_fov_deg = fov.horizontal_deg
@@ -207,15 +215,25 @@ def main() -> int:
             )
 
     tuned = auto_tune_ptz_settings(horizontal_fov_deg, vertical_fov_deg)
-    threshold_deg = args.threshold_deg if args.threshold_deg is not None else (tuned.threshold_deg if args.auto_tune else 0.1)
-    max_delta_deg = args.max_delta_deg if args.max_delta_deg is not None else (tuned.max_delta_deg if args.auto_tune else 10.0)
+    threshold_deg = (
+        args.threshold_deg if args.threshold_deg is not None else (tuned.threshold_deg if args.auto_tune else 0.1)
+    )
+    max_delta_deg = (
+        args.max_delta_deg if args.max_delta_deg is not None else (tuned.max_delta_deg if args.auto_tune else 10.0)
+    )
     nudge_degrees_per_second = (
         args.nudge_degrees_per_second
         if args.nudge_degrees_per_second is not None
         else (tuned.nudge_degrees_per_second if args.auto_tune else 8.0)
     )
-    nudge_max_steps = args.nudge_max_steps if args.nudge_max_steps is not None else (tuned.nudge_max_steps if args.auto_tune else 2)
-    tilt_nudge_scale = args.tilt_nudge_scale if args.tilt_nudge_scale is not None else (tuned.tilt_nudge_scale if args.auto_tune else 1.0)
+    nudge_max_steps = (
+        args.nudge_max_steps if args.nudge_max_steps is not None else (tuned.nudge_max_steps if args.auto_tune else 2)
+    )
+    tilt_nudge_scale = (
+        args.tilt_nudge_scale
+        if args.tilt_nudge_scale is not None
+        else (tuned.tilt_nudge_scale if args.auto_tune else 1.0)
+    )
     print(
         f"ptz_config: fov_source={fov_source} hfov={horizontal_fov_deg:.3f} vfov={vertical_fov_deg:.3f} "
         f"threshold={threshold_deg:.3f} max_delta={max_delta_deg:.3f} "
@@ -288,12 +306,7 @@ def main() -> int:
     print(f"annotation_mode={annotation_mode} inference_time={inference_time:.3f}s compute_time={compute_time:.3f}s")
     print(
         "instances="
-        + str(
-            [
-                (item.get("recognize_image_index"), item.get("error"), item.get("reading"))
-                for item in instances
-            ]
-        )
+        + str([(item.get("recognize_image_index"), item.get("error"), item.get("reading")) for item in instances])
     )
 
     after_image = controller.capture_image()
