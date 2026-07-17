@@ -53,11 +53,11 @@ bash recognition_http_server/utils/deploy_stream_error_recovery_service.sh insta
 
 The service supports 3 recognition tasks via a handler registry pattern (no `if/elif` chains for task dispatch):
 
-| Task | `recognize_type` | Internal kind | Handler |
-|------|------------------|---------------|---------|
-| Dial meter reading | `"1"` | `meter` | `handlers/meter.py` → dispatches to pointer or digital |
-| Fire detection | `"6"` | `fire` | `handlers/detection.py` (generic YOLO) |
-| Safety helmet | `"7"` | `safehat` | `handlers/detection.py` (generic YOLO) |
+| Task               | `recognize_type` | Internal kind | Handler                                                |
+| ------------------ | ---------------- | ------------- | ------------------------------------------------------ |
+| Dial meter reading | `"1"`            | `meter`       | `handlers/meter.py` → dispatches to pointer or digital |
+| Fire detection     | `"6"`            | `fire`        | `handlers/detection.py` (generic YOLO)                 |
+| Safety helmet      | `"7"`            | `safehat`     | `handlers/detection.py` (generic YOLO)                 |
 
 ### Key modules
 
@@ -115,15 +115,15 @@ The SDK lib directory is resolved automatically from CPU architecture. Override 
 
 `HikvisionPTZController` wraps HCNetSDK with a persistent session (`NET_DVR_Login_V30` → `NET_DVR_Logout`). Key methods:
 
-| Method | SDK calls | Purpose |
-|--------|-----------|---------|
-| `align(request)` | `NET_DVR_PTZControlWithSpeed_Other` | Nudge pan/tilt by delta degrees |
-| `zoom(request)` | `NET_DVR_PTZControlWithSpeed_Other` | Nudge zoom in/out |
-| `read_field_of_view()` | `NET_DVR_GetSTDConfig(GIS_INFO)` | Read optical FOV + zoom range |
-| `read_zoom_limits()` | `NET_DVR_GetSTDConfig(GIS_INFO)` | Current zoom + max zoom ratio |
-| `read_position()` | `NET_DVR_GetDVRConfig(PTZPOS)` | Read absolute pan/tilt/zoom (BCD) |
-| `set_position(pos)` | `NET_DVR_SetDVRConfig(PTZPOS)` | Restore absolute PTZ position |
-| `capture_image()` | ISAPI HTTP `/picture` | Snapshot via HTTP Digest auth |
+| Method                 | SDK calls                           | Purpose                           |
+| ---------------------- | ----------------------------------- | --------------------------------- |
+| `align(request)`       | `NET_DVR_PTZControlWithSpeed_Other` | Nudge pan/tilt by delta degrees   |
+| `zoom(request)`        | `NET_DVR_PTZControlWithSpeed_Other` | Nudge zoom in/out                 |
+| `read_field_of_view()` | `NET_DVR_GetSTDConfig(GIS_INFO)`    | Read optical FOV + zoom range     |
+| `read_zoom_limits()`   | `NET_DVR_GetSTDConfig(GIS_INFO)`    | Current zoom + max zoom ratio     |
+| `read_position()`      | `NET_DVR_GetDVRConfig(PTZPOS)`      | Read absolute pan/tilt/zoom (BCD) |
+| `set_position(pos)`    | `NET_DVR_SetDVRConfig(PTZPOS)`      | Restore absolute PTZ position     |
+| `capture_image()`      | ISAPI HTTP `/picture`               | Snapshot via HTTP Digest auth     |
 
 Pan/tilt angles use BCD encoding (0.1° resolution, max 360.0°). Zoom values are arbitrary (device-dependent). Nudge operations split large movements into configurable steps and retry stop commands up to 3 times.
 

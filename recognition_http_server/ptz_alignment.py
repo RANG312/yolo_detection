@@ -232,9 +232,8 @@ def _apply_zoom_limits(request: PTZZoomRequest, limits: PTZZoomLimits) -> PTZZoo
     current_zoom = float(limits.current_zoom)
     max_zoom = float(limits.max_zoom)
     min_zoom = float(limits.min_zoom)
-    limit_reached = (
-        (request.zoom_direction == "in" and current_zoom >= max_zoom)
-        or (request.zoom_direction == "out" and current_zoom <= min_zoom)
+    limit_reached = (request.zoom_direction == "in" and current_zoom >= max_zoom) or (
+        request.zoom_direction == "out" and current_zoom <= min_zoom
     )
     return PTZZoomRequest(
         image_width=request.image_width,

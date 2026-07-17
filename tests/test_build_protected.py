@@ -8,7 +8,7 @@ import pytest
 import scripts.build_protected as build_protected
 
 
-def test_remove_protected_sources_refuses_to_delete_without_extension(monkeypatch, tmp_path: Path) -> None:  # noqa: ANN001
+def test_remove_protected_sources_refuses_to_delete_without_extension(monkeypatch, tmp_path: Path) -> None:
     source_path = tmp_path / "package" / "core.py"
     source_path.parent.mkdir()
     source_path.write_text("VALUE = 1\n", encoding="utf-8")
@@ -21,7 +21,7 @@ def test_remove_protected_sources_refuses_to_delete_without_extension(monkeypatc
     assert source_path.exists()
 
 
-def test_remove_protected_sources_deletes_source_cache_and_build_dir(monkeypatch, tmp_path: Path) -> None:  # noqa: ANN001
+def test_remove_protected_sources_deletes_source_cache_and_build_dir(monkeypatch, tmp_path: Path) -> None:
     source_path = tmp_path / "package" / "core.py"
     source_path.parent.mkdir()
     source_path.write_text("VALUE = 1\n", encoding="utf-8")
@@ -44,7 +44,7 @@ def test_remove_protected_sources_deletes_source_cache_and_build_dir(monkeypatch
     assert not (tmp_path / "build").exists()
 
 
-def test_main_reuses_extensions_when_sources_were_already_removed(monkeypatch, tmp_path: Path) -> None:  # noqa: ANN001
+def test_main_reuses_extensions_when_sources_were_already_removed(monkeypatch, tmp_path: Path) -> None:
     source_path = tmp_path / "package" / "core.py"
     source_path.parent.mkdir()
     build_protected.compiled_extension_path(source_path).touch()
