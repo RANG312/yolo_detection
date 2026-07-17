@@ -10,7 +10,7 @@ class FakeGISSDK:
         self.command = None
         self.channel = None
 
-    def NET_DVR_GetSTDConfig(self, user_id, command, config):  # noqa: ANN001, ANN202
+    def NET_DVR_GetSTDConfig(self, user_id, command, config):
         self.command = command
         cfg = ctypes.cast(config, ctypes.POINTER(hk_sdk_probe.NET_DVR_STD_CONFIG)).contents
         self.channel = ctypes.cast(cfg.lpCondBuffer, ctypes.POINTER(ctypes.c_int)).contents.value
