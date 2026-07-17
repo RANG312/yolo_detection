@@ -3,13 +3,17 @@ from __future__ import annotations
 import cv2
 import numpy as np
 
-from recognition_http_server.dial_reading.constants import METER_DATA_9K_EXPECTED_CLASSES, METER_DATA_9K_GAUGE_RETRY_SIZE
+from recognition_http_server.dial_reading.constants import (
+    METER_DATA_9K_EXPECTED_CLASSES,
+    METER_DATA_9K_GAUGE_RETRY_SIZE,
+)
 from recognition_http_server.dial_reading.geometry import box_center, crop_roi
+
 
 # 检测结果整理模块：把 YOLO 原始框转换成“每块表一个实例”的结构。
 # 几何模块只关心实例里的 gauge/center/tick/tip，不直接依赖 YOLO Results 对象。
 def collect_best_detections(result) -> dict[str, dict[str, np.ndarray | float]]:
-    """旧版三类标注只需要每类置信度最高的一个框。"""
+    """旧版三类标注只需要每类置信度最高的一个框。."""
     detections: dict[str, dict[str, np.ndarray | float]] = {}
     names = result.names
     for box in result.boxes.cpu().numpy().data:
@@ -23,7 +27,7 @@ def collect_best_detections(result) -> dict[str, dict[str, np.ndarray | float]]:
 
 
 def collect_all_detections(result) -> dict[str, list[dict[str, np.ndarray | float]]]:
-    """9k 标注可能有多块表，需要保留每个类别的全部候选框。"""
+    """9k 标注可能有多块表，需要保留每个类别的全部候选框。."""
     detections: dict[str, list[dict[str, np.ndarray | float]]] = {}
     names = result.names
     for box in result.boxes.cpu().numpy().data:
@@ -42,12 +46,12 @@ def point_in_box(point: np.ndarray, box_xyxy: np.ndarray, margin: float = 0.0) -
 
 
 def sort_boxes_reading_order(boxes: list[np.ndarray]) -> list[np.ndarray]:
-    """按从上到下、从左到右的阅读顺序给多块表编号。"""
+    """按从上到下、从左到右的阅读顺序给多块表编号。."""
     return sorted(boxes, key=lambda box: (float(box[1]), float(box[0])))
 
 
 def resize_gauge_crop_for_retry(image: np.ndarray, gauge_box: np.ndarray) -> np.ndarray:
-    """裁剪第一阶段 gauge，并缩放到 9k 模型训练时使用的正方形输入尺寸。"""
+    """裁剪第一阶段 gauge，并缩放到 9k 模型训练时使用的正方形输入尺寸。."""
     gauge_roi, _ = crop_roi(image, gauge_box)
     return cv2.resize(
         gauge_roi,
@@ -60,11 +64,9 @@ def ensure_retry_gauge_detection(
     detections: dict[str, list[dict[str, np.ndarray | float]]],
     image_shape: tuple[int, int, int],
 ) -> dict[str, list[dict[str, np.ndarray | float]]]:
-    """
-    兜底补全裁剪图上的 gauge。
+    """兜底补全裁剪图上的 gauge。.
 
-    第二阶段输入已经是单块表盘 ROI，如果模型只检测到点位而漏掉 gauge，可以把
-    整张裁剪图视为 gauge，避免因为一个冗余框缺失而丢弃有效点位。
+    第二阶段输入已经是单块表盘 ROI，如果模型只检测到点位而漏掉 gauge，可以把 整张裁剪图视为 gauge，避免因为一个冗余框缺失而丢弃有效点位。
     """
     if detections.get("gauge"):
         return detections
@@ -87,11 +89,9 @@ def ensure_retry_gauge_detection(
 def assign_meter_data_9k_instances(
     detections: dict[str, list[dict[str, np.ndarray | float]]],
 ) -> list[dict[str, dict[str, np.ndarray | float]]]:
-    """
-    将 9k 多类别检测框分配到对应表盘实例。
+    """将 9k 多类别检测框分配到对应表盘实例。.
 
-    每个点位类别最多分给一块表；优先选择中心落在 gauge 内、距离 gauge 中心近、
-    置信度高的候选框。这样能减少相邻表盘点位互相串用。
+    每个点位类别最多分给一块表；优先选择中心落在 gauge 内、距离 gauge 中心近、 置信度高的候选框。这样能减少相邻表盘点位互相串用。
     """
     gauge_detections = detections.get("gauge", [])
     if not gauge_detections:

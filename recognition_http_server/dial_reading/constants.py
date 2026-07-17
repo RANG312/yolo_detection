@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-
-
 LEGACY_EXPECTED_CLASSES = {"start", "point", "end"}
 METER_DATA_9K_EXPECTED_CLASSES = {"gauge", "center", "pointer_tip", "max_tick", "min_tick"}
 

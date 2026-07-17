@@ -4,7 +4,6 @@ import ctypes
 import importlib.util
 from pathlib import Path
 
-
 SCRIPT_PATH = Path(__file__).resolve().parents[1] / "recognition_http_server" / "utils" / "stream_error_processing.py"
 SPEC = importlib.util.spec_from_file_location("stream_error_processing", SCRIPT_PATH)
 stream_error_processing = importlib.util.module_from_spec(SPEC)
@@ -76,14 +75,14 @@ def test_cleanup_capture_images_removes_only_frame_images(tmp_path: Path) -> Non
     assert unrelated.exists()
 
 
-def test_monitor_cleans_capture_images_after_successful_recovery(monkeypatch, tmp_path: Path) -> None:  # noqa: ANN001
+def test_monitor_cleans_capture_images_after_successful_recovery(monkeypatch, tmp_path: Path) -> None:
     frame = {"r_minus_g": -0.5, "b_minus_g": -0.4, "green_deficit": 1.4}
     image = tmp_path / "run" / "frame_000001.jpg"
     image.parent.mkdir()
     image.write_text("image", encoding="utf-8")
     events: list[str] = []
 
-    def fake_iter(source, interval):  # noqa: ANN001, ANN202
+    def fake_iter(source, interval):
         yield frame
 
     monkeypatch.setattr(stream_error_processing, "iter_stream_statistics", fake_iter)
@@ -116,14 +115,14 @@ class FakeSDK:
         self.set_modes: list[int] = []
         self.last_error = 0
 
-    def NET_DVR_GetDVRConfig(self, user_id, command, channel, param_ref, size, returned_ref):  # noqa: ANN001
+    def NET_DVR_GetDVRConfig(self, user_id, command, channel, param_ref, size, returned_ref):
         param = param_ref._obj
         param.struDayNight.byDayNightFilterType = 2
         returned_ref._obj.value = size
         self.get_call = (user_id, command, channel.value, size)
         return True
 
-    def NET_DVR_SetDVRConfig(self, user_id, command, channel, param_ref, size):  # noqa: ANN001
+    def NET_DVR_SetDVRConfig(self, user_id, command, channel, param_ref, size):
         self.set_modes.append(param_ref._obj.struDayNight.byDayNightFilterType)
         self.set_call = (user_id, command, channel, size)
         return True
@@ -132,7 +131,7 @@ class FakeSDK:
         return self.last_error
 
 
-def test_reset_camera_day_night_mode_switches_night_day_auto(monkeypatch) -> None:  # noqa: ANN001
+def test_reset_camera_day_night_mode_switches_night_day_auto(monkeypatch) -> None:
     fake_sdk = FakeSDK()
     sleeps: list[float] = []
     monkeypatch.setattr(stream_error_processing.time, "sleep", sleeps.append)
