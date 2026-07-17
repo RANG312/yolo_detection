@@ -1,7 +1,7 @@
 __all__ = ["prepare_image"]
 
 
-def __getattr__(name: str):  # noqa: ANN202
+def __getattr__(name: str):
     if name == "prepare_image":
         from recognition_http_server.utils.image_io import prepare_image
 
