@@ -8,7 +8,7 @@ from recognition_http_server.ptz_alignment import PTZAlignmentRequest, PTZZoomRe
 from recognition_http_server.virtual_ptz import VirtualPTZConfig, VirtualPTZController
 
 
-def test_virtual_ptz_records_motion_and_returns_static_frame(monkeypatch, tmp_path: Path) -> None:  # noqa: ANN001
+def test_virtual_ptz_records_motion_and_returns_static_frame(monkeypatch, tmp_path: Path) -> None:
     image_path = tmp_path / "meter.jpg"
     image_path.touch()
     frame = np.zeros((16, 24, 3), dtype=np.uint8)

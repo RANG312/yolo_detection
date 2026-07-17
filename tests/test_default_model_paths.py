@@ -24,9 +24,7 @@ def test_completed_task_default_model_paths_use_runs_weights() -> None:
         "runs/weights/8_fire_protection_facilities/fire-fighting-facilitie_best.pt"
     )
     assert constants.DEFAULT_PERSON_FALL_DOWN_MODEL_PATH == "runs/weights/9_person_fall_down/fall_best.pt"
-    assert constants.DEFAULT_FIRE_EXTINGUISHER_MODEL_PATH == (
-        "runs/weights/10_fire_extinguisher/extinguisher_best.pt"
-    )
+    assert constants.DEFAULT_FIRE_EXTINGUISHER_MODEL_PATH == ("runs/weights/10_fire_extinguisher/extinguisher_best.pt")
     assert constants.DEFAULT_PERSON_AND_CARS_MODEL_PATH == "runs/weights/11_person_and_cars/car_best.pt"
 
 

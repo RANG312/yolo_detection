@@ -7,9 +7,12 @@ from typing import Any
 
 import cv2
 import numpy as np
-from ultralytics import YOLO
 
-from recognition_http_server.dial_reading.constants import LEGACY_EXPECTED_CLASSES, METER_DATA_9K_EXPECTED_CLASSES, METER_DATA_9K_GAUGE_RETRY_SIZE
+from recognition_http_server.dial_reading.constants import (
+    LEGACY_EXPECTED_CLASSES,
+    METER_DATA_9K_EXPECTED_CLASSES,
+    METER_DATA_9K_GAUGE_RETRY_SIZE,
+)
 from recognition_http_server.dial_reading.detections import (
     assign_meter_data_9k_instances,
     collect_all_detections,
@@ -18,13 +21,15 @@ from recognition_http_server.dial_reading.detections import (
     resize_gauge_crop_for_retry,
 )
 from recognition_http_server.dial_reading.geometry import compute_reading_from_detection_instance
-from recognition_http_server.ptz_alignment import maybe_align_gauge, maybe_zoom_gauge
 from recognition_http_server.dial_reading.visualization import draw_box, draw_point
+from recognition_http_server.ptz_alignment import maybe_align_gauge, maybe_zoom_gauge
+from ultralytics import YOLO
+
 
 # 表计推理主流程：负责模型加载、YOLO 推理、检测结果转实例、几何读数和可视化。
 # HTTP 服务和命令行入口都复用这里，避免两条链路出现行为差异。
 def infer_annotation_mode(model: YOLO) -> str:
-    """根据模型类别名判断标注协议，避免调用方手工传错后处理模式。"""
+    """根据模型类别名判断标注协议，避免调用方手工传错后处理模式。."""
     model_names = set(model.names.values()) if isinstance(model.names, dict) else set(model.names)
     if METER_DATA_9K_EXPECTED_CLASSES.issubset(model_names):
         return "meter_data_9k"
@@ -38,7 +43,7 @@ def infer_annotation_mode(model: YOLO) -> str:
 
 
 def load_model(model_path: str) -> tuple[YOLO, str]:
-    """加载 YOLO 模型，并返回该模型对应的表计标注协议。"""
+    """加载 YOLO 模型，并返回该模型对应的表计标注协议。."""
     model = YOLO(model_path)
     annotation_mode = infer_annotation_mode(model)
     return model, annotation_mode
@@ -63,7 +68,7 @@ def _save_aligned_capture(args: argparse.Namespace, image: np.ndarray) -> None:
     cv2.imwrite(str(aligned_path), image)
 
 
-def _refresh_ptz_fov(args: argparse.Namespace, config):  # noqa: ANN001, ANN202
+def _refresh_ptz_fov(args: argparse.Namespace, config):
     provider = getattr(args, "ptz_fov_provider", None)
     if provider is None or config is None or not getattr(config, "enabled", False):
         return config
@@ -78,12 +83,9 @@ def _refresh_ptz_fov(args: argparse.Namespace, config):  # noqa: ANN001, ANN202
 def predict_image_instances(
     image_path: Path, model: YOLO, args: argparse.Namespace, annotation_mode: str
 ) -> tuple[np.ndarray, list[dict[str, Any]], float, float]:
-    """
-    对单张图执行表计识别，返回可视化图、逐表实例、推理耗时和几何耗时。
+    """对单张图执行表计识别，返回可视化图、逐表实例、推理耗时和几何耗时。.
 
-    `meter_data_9k` 模型先在原图中找 gauge，再把首个 gauge 裁剪缩放到训练尺寸
-    进行第二次推理。这样能让中心点、刻度和指针 tip 在表盘 ROI 内获得更稳定的
-    相对尺度。
+    `meter_data_9k` 模型先在原图中找 gauge，再把首个 gauge 裁剪缩放到训练尺寸 进行第二次推理。这样能让中心点、刻度和指针 tip 在表盘 ROI 内获得更稳定的 相对尺度。
     """
     image = cv2.imread(str(image_path))
     if image is None:
@@ -99,7 +101,9 @@ def predict_image_instances(
         ptz_alignment_config = getattr(args, "ptz_alignment_config", None)
         ptz_controller = getattr(args, "ptz_controller", None)
         ptz_logger = getattr(args, "ptz_logger", None)
-        ptz_enabled = bool(getattr(ptz_alignment_config, "enabled", False)) if ptz_alignment_config is not None else False
+        ptz_enabled = (
+            bool(getattr(ptz_alignment_config, "enabled", False)) if ptz_alignment_config is not None else False
+        )
         max_alignment_passes = 1
         if ptz_alignment_config is not None:
             max_alignment_passes = max(1, int(getattr(ptz_alignment_config, "max_passes", 1)))
@@ -126,7 +130,7 @@ def predict_image_instances(
                     image.shape,
                     gauge_box,
                 )
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 ptz_alignment_failed = True
                 if ptz_logger is not None:
                     ptz_logger.exception("meter ptz alignment skipped after sdk error: %s", exc)
@@ -181,7 +185,7 @@ def predict_image_instances(
                         image.shape,
                         gauge_box,
                     )
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     if ptz_logger is not None:
                         ptz_logger.exception("meter ptz zoom skipped after sdk error: %s", exc)
                     break
@@ -206,7 +210,9 @@ def predict_image_instances(
                 image = ptz_controller.capture_image()
                 _save_ptz_capture(args, image, "zoom", zoom_pass)
                 inference_start = time.perf_counter()
-                results = model.predict(source=image, imgsz=args.imgsz, conf=args.conf, device=args.device, verbose=False)
+                results = model.predict(
+                    source=image, imgsz=args.imgsz, conf=args.conf, device=args.device, verbose=False
+                )
                 inference_time += time.perf_counter() - inference_start
                 detections = collect_all_detections(results[0])
                 gauge_detections = detections.get("gauge", [])
@@ -265,16 +271,22 @@ def predict_image_instances(
             # 单个表盘失败不影响同图其他表盘，错误会被下沉到对应实例结果中。
             if "_error" in detection_instance:
                 raise ValueError(str(detection_instance["_error"]["message"]))
-            geometry = compute_reading_from_detection_instance(image, detection_instance, annotation_mode, args.debug_center)
+            geometry = compute_reading_from_detection_instance(
+                image, detection_instance, annotation_mode, args.debug_center
+            )
             reading = args.min_value + geometry["ratio"] * (args.max_value - args.min_value)
             geometry["reading"] = reading
-            geometry["recognize_image_index"] = int(detection_instance.get("gauge", {}).get("recognize_image_index", index))
+            geometry["recognize_image_index"] = int(
+                detection_instance.get("gauge", {}).get("recognize_image_index", index)
+            )
             geometry["error"] = None
             prediction_instances.append(geometry)
         except Exception as exc:
             prediction_instances.append(
                 {
-                    "recognize_image_index": int(detection_instance.get("gauge", {}).get("recognize_image_index", index)),
+                    "recognize_image_index": int(
+                        detection_instance.get("gauge", {}).get("recognize_image_index", index)
+                    ),
                     "error": str(exc),
                     "gauge_box": detection_instance.get("gauge", {}).get("box"),
                     "center_debug": {},
@@ -304,8 +316,12 @@ def predict_image_instances(
         draw_point(canvas, instance["start_tick"], "", (0, 0, 255))
         draw_point(canvas, instance["end_tick"], "", (255, 215, 0))
         draw_point(canvas, instance["pointer_tip"], "", (0, 255, 0))
-        cv2.line(canvas, tuple(instance["center"].astype(int)), tuple(instance["start_tick"].astype(int)), (0, 0, 255), 2)
-        cv2.line(canvas, tuple(instance["center"].astype(int)), tuple(instance["end_tick"].astype(int)), (255, 215, 0), 2)
+        cv2.line(
+            canvas, tuple(instance["center"].astype(int)), tuple(instance["start_tick"].astype(int)), (0, 0, 255), 2
+        )
+        cv2.line(
+            canvas, tuple(instance["center"].astype(int)), tuple(instance["end_tick"].astype(int)), (255, 215, 0), 2
+        )
         cv2.line(
             canvas,
             tuple(instance["center"].astype(int)),
@@ -356,7 +372,7 @@ def predict_image_instances(
 def predict_single_image(
     image_path: Path, model: YOLO, args: argparse.Namespace, annotation_mode: str
 ) -> tuple[np.ndarray, float, str, float, float, dict[str, np.ndarray | str]]:
-    """兼容旧脚本：只返回第一块识别成功表盘的读数。"""
+    """兼容旧脚本：只返回第一块识别成功表盘的读数。."""
     canvas, prediction_instances, inference_time, compute_time = predict_image_instances(
         image_path, model, args, annotation_mode
     )

@@ -5,7 +5,6 @@ from pathlib import Path
 
 from ultralytics import YOLO
 
-
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_BEST = "runs/train/dial_thermometer_20260401_133934/weights/best.pt"
 

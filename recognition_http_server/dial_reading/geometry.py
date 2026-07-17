@@ -7,10 +7,11 @@ import numpy as np
 
 from recognition_http_server.dial_reading.constants import LEGACY_EXPECTED_CLASSES, METER_DATA_9K_EXPECTED_CLASSES
 
+
 # 几何计算模块：负责 ROI 坐标变换、中心估计、刻度/指针端点提取和读数比例计算。
 # 这里不读取模型、不处理 HTTP 请求，便于单独调试传统视觉算法。
 def clip_box(box_xyxy: np.ndarray, shape: tuple[int, int, int]) -> np.ndarray:
-    """把检测框裁剪到图像范围内，并保证宽高至少为 1。"""
+    """把检测框裁剪到图像范围内，并保证宽高至少为 1。."""
     h, w = shape[:2]
     x1, y1, x2, y2 = box_xyxy.astype(int)
     x1 = max(0, min(x1, w - 1))
@@ -21,12 +22,14 @@ def clip_box(box_xyxy: np.ndarray, shape: tuple[int, int, int]) -> np.ndarray:
 
 
 def crop_roi(image: np.ndarray, box_xyxy: np.ndarray, pad_ratio: float = 0.0) -> tuple[np.ndarray, np.ndarray]:
-    """根据检测框裁剪 ROI，返回 ROI 图像和裁剪后的全局坐标框。"""
+    """根据检测框裁剪 ROI，返回 ROI 图像和裁剪后的全局坐标框。."""
     if pad_ratio > 0.0:
         x1, y1, x2, y2 = box_xyxy.astype(np.float64)
         w = x2 - x1
         h = y2 - y1
-        box_xyxy = np.array([x1 - w * pad_ratio, y1 - h * pad_ratio, x2 + w * pad_ratio, y2 + h * pad_ratio], dtype=np.float64)
+        box_xyxy = np.array(
+            [x1 - w * pad_ratio, y1 - h * pad_ratio, x2 + w * pad_ratio, y2 + h * pad_ratio], dtype=np.float64
+        )
     box = clip_box(box_xyxy, image.shape)
     x1, y1, x2, y2 = box
     return image[y1:y2, x1:x2].copy(), box
@@ -58,7 +61,7 @@ def segment_midpoint(segment: np.ndarray) -> np.ndarray:
 
 
 def line_alignment_to_center(segment: np.ndarray, center_local: np.ndarray) -> float:
-    """衡量线段方向和从中心出发的径向方向是否一致。"""
+    """衡量线段方向和从中心出发的径向方向是否一致。."""
     p1 = segment[:2]
     p2 = segment[2:]
     direction = p2 - p1
@@ -110,11 +113,9 @@ def select_tick_endpoint(segment: np.ndarray, center_local: np.ndarray) -> np.nd
 def combine_tick_support_points(
     segments: list[np.ndarray], primary_segment: np.ndarray, center_local: np.ndarray, roi_shape: tuple[int, int, int]
 ) -> np.ndarray:
-    """
-    合并同一刻度附近的平行线段端点。
+    """合并同一刻度附近的平行线段端点。.
 
-    表盘刻度在边缘检测中常被切成多段，直接取单条线段端点容易抖动；这里把方向、
-    中点和端点距离都接近的线段聚合后取平均。
+    表盘刻度在边缘检测中常被切成多段，直接取单条线段端点容易抖动；这里把方向、 中点和端点距离都接近的线段聚合后取平均。
     """
     support_points = [select_tick_endpoint(primary_segment, center_local)]
     primary_direction = segment_direction(primary_segment)
@@ -142,10 +143,10 @@ def combine_tick_support_points(
 
 
 def refine_dark_point(gray: np.ndarray, point_local: np.ndarray, window_radius: int = 14) -> np.ndarray:
-    """在候选点附近寻找更暗的连通域中心，用于贴合黑色指针或中心轴。"""
+    """在候选点附近寻找更暗的连通域中心，用于贴合黑色指针或中心轴。."""
     h, w = gray.shape
-    x = int(round(point_local[0]))
-    y = int(round(point_local[1]))
+    x = round(point_local[0])
+    y = round(point_local[1])
     x1 = max(0, x - window_radius)
     y1 = max(0, y - window_radius)
     x2 = min(w, x + window_radius + 1)
@@ -159,7 +160,7 @@ def refine_dark_point(gray: np.ndarray, point_local: np.ndarray, window_radius: 
     if mask.sum() < 8:
         return point_local
 
-    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(mask, connectivity=8)
+    num_labels, _labels, stats, centroids = cv2.connectedComponentsWithStats(mask, connectivity=8)
     if num_labels <= 1:
         return point_local
 
@@ -196,11 +197,9 @@ def refine_center_point(gray: np.ndarray, point_local: np.ndarray) -> np.ndarray
 
 
 def detect_hub_center_full_roi(roi: np.ndarray) -> np.ndarray | None:
-    """
-    在完整 ROI 内通过圆检测寻找指针轴心。
+    """在完整 ROI 内通过圆检测寻找指针轴心。.
 
-    使用原灰度、CLAHE 增强和 DoG 增强三种预处理，提升不同光照和对比度下
-    小圆轴心的召回率。
+    使用原灰度、CLAHE 增强和 DoG 增强三种预处理，提升不同光照和对比度下 小圆轴心的召回率。
     """
     gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
     gray = cv2.medianBlur(gray, 5)
@@ -238,7 +237,10 @@ def detect_hub_center_full_roi(roi: np.ndarray) -> np.ndarray | None:
 
     deduped: list[np.ndarray] = []
     for circle in candidates:
-        if any(np.linalg.norm(circle[:2] - existing[:2]) <= 6.0 and abs(circle[2] - existing[2]) <= 4.0 for existing in deduped):
+        if any(
+            np.linalg.norm(circle[:2] - existing[:2]) <= 6.0 and abs(circle[2] - existing[2]) <= 4.0
+            for existing in deduped
+        ):
             continue
         deduped.append(circle)
 
@@ -258,7 +260,9 @@ def detect_hub_center_full_roi(roi: np.ndarray) -> np.ndarray | None:
 
         ring_support = float(edges[ring_mask].mean())
         contrast = float(abs(float(enhanced[inner_mask].mean()) - float(enhanced[annulus_mask].mean())))
-        center_bias = float(np.linalg.norm(np.array([x, y], dtype=np.float64) - np.array([w / 2.0, h / 2.0], dtype=np.float64)))
+        center_bias = float(
+            np.linalg.norm(np.array([x, y], dtype=np.float64) - np.array([w / 2.0, h / 2.0], dtype=np.float64))
+        )
         radius_bias = abs(float(radius) - target_radius)
         score = ring_support * 1.2 + contrast * 0.8 - radius_bias * 1.4 - center_bias * 0.08
         if best_score is None or score > best_score:
@@ -271,15 +275,13 @@ def detect_hub_center_full_roi(roi: np.ndarray) -> np.ndarray | None:
 def refine_radial_endpoint(
     gray: np.ndarray, point_local: np.ndarray, center_local: np.ndarray, window_radius: int = 10
 ) -> np.ndarray:
-    """
-    沿中心到候选点的径向方向细化端点。
+    """沿中心到候选点的径向方向细化端点。.
 
-    端点候选只保留靠近径向直线的暗像素，再取最外侧一小段的均值，减少噪声点
-    对指针 tip 或刻度端点的影响。
+    端点候选只保留靠近径向直线的暗像素，再取最外侧一小段的均值，减少噪声点 对指针 tip 或刻度端点的影响。
     """
     h, w = gray.shape
-    x = int(round(point_local[0]))
-    y = int(round(point_local[1]))
+    x = round(point_local[0])
+    y = round(point_local[1])
     x1 = max(0, x - window_radius)
     y1 = max(0, y - window_radius)
     x2 = min(w, x + window_radius + 1)
@@ -321,10 +323,10 @@ def refine_radial_endpoint(
 
 
 def refine_hub_circle_center(gray: np.ndarray, point_local: np.ndarray, patch_radius: int = 22) -> np.ndarray:
-    """在候选中心附近的小窗口中，用圆和轮廓证据微调轴心位置。"""
+    """在候选中心附近的小窗口中，用圆和轮廓证据微调轴心位置。."""
     h, w = gray.shape
-    x = int(round(point_local[0]))
-    y = int(round(point_local[1]))
+    x = round(point_local[0])
+    y = round(point_local[1])
     x1 = max(0, x - patch_radius)
     y1 = max(0, y - patch_radius)
     x2 = min(w, x + patch_radius + 1)
@@ -376,15 +378,15 @@ def refine_hub_circle_center(gray: np.ndarray, point_local: np.ndarray, patch_ra
     if not candidates:
         return point_local
 
-    best_score, best_center, best_radius = min(candidates, key=lambda item: item[0])
+    _best_score, best_center, best_radius = min(candidates, key=lambda item: item[0])
     if np.linalg.norm(best_center - target) > max(6.0, patch_radius * 0.28):
         return point_local
     if not (4.0 <= best_radius <= 12.0):
         return point_local
-    best_x = int(round(best_center[0]))
-    best_y = int(round(best_center[1]))
-    target_x = int(round(target[0]))
-    target_y = int(round(target[1]))
+    best_x = round(best_center[0])
+    best_y = round(best_center[1])
+    target_x = round(target[0])
+    target_y = round(target[1])
     best_x = max(0, min(best_x, patch.shape[1] - 1))
     best_y = max(0, min(best_y, patch.shape[0] - 1))
     target_x = max(0, min(target_x, patch.shape[1] - 1))
@@ -399,7 +401,7 @@ def refine_hub_circle_center(gray: np.ndarray, point_local: np.ndarray, patch_ra
 
 
 def detect_concentric_center_local(roi: np.ndarray, preferred_center: np.ndarray | None = None) -> np.ndarray | None:
-    """通过同心圆检测估计表盘中心，常用于旧版 point ROI 的中心补偿。"""
+    """通过同心圆检测估计表盘中心，常用于旧版 point ROI 的中心补偿。."""
     gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
     gray = cv2.medianBlur(gray, 5)
     h, w = gray.shape
@@ -456,7 +458,7 @@ def detect_concentric_center_local(roi: np.ndarray, preferred_center: np.ndarray
 def detect_pointer_root_candidate(
     roi: np.ndarray, anchor_local: np.ndarray | None = None
 ) -> tuple[np.ndarray | None, np.ndarray | None]:
-    """从 ROI 内最长且接近锚点的线段中估计指针根部和尖端。"""
+    """从 ROI 内最长且接近锚点的线段中估计指针根部和尖端。."""
     segments = detect_segments(roi, min_line_ratio=0.3)
     if not segments:
         return None, None
@@ -482,11 +484,9 @@ def detect_pointer_root_candidate(
 def detect_center_from_roi(
     roi: np.ndarray, box_xyxy: np.ndarray, debug_info: dict[str, np.ndarray | str] | None = None
 ) -> np.ndarray:
-    """
-    综合多种视觉证据估计旧版 point ROI 的全局中心点。
+    """综合多种视觉证据估计旧版 point ROI 的全局中心点。.
 
-    优先使用明确的轴心小圆；若小圆证据不足，则退回同心圆、ROI 中心和指针根部
-    的小幅融合。debug_info 会记录每个候选点，便于定位误差来源。
+    优先使用明确的轴心小圆；若小圆证据不足，则退回同心圆、ROI 中心和指针根部 的小幅融合。debug_info 会记录每个候选点，便于定位误差来源。
     """
     gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
     h, w = gray.shape
@@ -496,7 +496,11 @@ def detect_center_from_roi(
     initial_root_anchor = point_hub_center if point_hub_center is not None else roi_hub_center
     initial_root_candidate, _ = detect_pointer_root_candidate(roi, initial_root_anchor)
     circle_center = detect_concentric_center_local(roi, initial_root_candidate)
-    root_anchor = point_hub_center if point_hub_center is not None else (circle_center if circle_center is not None else roi_hub_center)
+    root_anchor = (
+        point_hub_center
+        if point_hub_center is not None
+        else (circle_center if circle_center is not None else roi_hub_center)
+    )
     root_candidate, _ = detect_pointer_root_candidate(roi, root_anchor)
     pre_hub_center = None
     center_source = "roi_center"
@@ -566,7 +570,7 @@ def point_line_distance(point: np.ndarray, segment: np.ndarray) -> float:
 
 
 def detect_tick_point(roi: np.ndarray, box_xyxy: np.ndarray, center_global: np.ndarray) -> np.ndarray:
-    """在起止刻度 ROI 中寻找离中心最远且方向合理的刻度端点。"""
+    """在起止刻度 ROI 中寻找离中心最远且方向合理的刻度端点。."""
     gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
     segments = detect_segments(roi, min_line_ratio=0.10)
     if segments:
@@ -586,6 +590,7 @@ def detect_tick_point(roi: np.ndarray, box_xyxy: np.ndarray, center_global: np.n
             candidates.append((segment, radial_dist, alignment, length, endpoint_dist))
 
         if candidates:
+
             def tick_score(item: tuple[np.ndarray, float, float, float, float]) -> tuple[float, float, float, float]:
                 # 刻度端点应尽量远离中心，且线段本身足够长、足够径向。
                 _, radial_dist, alignment, length, endpoint_dist = item
@@ -603,11 +608,15 @@ def detect_tick_point(roi: np.ndarray, box_xyxy: np.ndarray, center_global: np.n
 
 
 def detect_pointer_tip(roi: np.ndarray, box_xyxy: np.ndarray, center_global: np.ndarray) -> np.ndarray:
-    """在指针 ROI 中寻找离中心更远的指针尖端。"""
+    """在指针 ROI 中寻找离中心更远的指针尖端。."""
     center_local = center_global - np.array([box_xyxy[0], box_xyxy[1]], dtype=np.float64)
     root_candidate, tip_candidate = detect_pointer_root_candidate(roi, center_local)
     if tip_candidate is not None:
-        tip_local = tip_candidate if np.linalg.norm(tip_candidate - center_local) > np.linalg.norm(root_candidate - center_local) else root_candidate
+        tip_local = (
+            tip_candidate
+            if np.linalg.norm(tip_candidate - center_local) > np.linalg.norm(root_candidate - center_local)
+            else root_candidate
+        )
         return local_to_global(tip_local, box_xyxy)
 
     gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
@@ -649,7 +658,7 @@ def ccw_distance(start: float, end: float) -> float:
 
 
 def select_arc_and_ratio(start_angle: float, end_angle: float, pointer_angle: float) -> tuple[float, float, str]:
-    """在顺/逆时针两条弧中选择能覆盖指针角度的弧，并计算归一化比例。"""
+    """在顺/逆时针两条弧中选择能覆盖指针角度的弧，并计算归一化比例。."""
     ccw_total = ccw_distance(start_angle, end_angle)
     ccw_pointer = ccw_distance(start_angle, pointer_angle)
     if ccw_pointer <= ccw_total:
@@ -669,6 +678,7 @@ def select_arc_and_ratio(start_angle: float, end_angle: float, pointer_angle: fl
     ratio = np.clip(0.0 if cw_total < 1e-6 else ccw_distance(pointer_angle, start_angle) / cw_total, 0.0, 1.0)
     return float(ratio), cw_total, "cw_clamped"
 
+
 # Convert assigned detections into the geometric points used to calculate the reading.
 def compute_reading_from_detection_instance(
     image: np.ndarray,
@@ -676,11 +686,9 @@ def compute_reading_from_detection_instance(
     annotation_mode: str,
     debug_center: bool,
 ) -> dict[str, Any]:
-    """
-    将单块表的检测实例转换为读数几何信息。
+    """将单块表的检测实例转换为读数几何信息。.
 
-    9k 标注直接使用 center/min_tick/max_tick/pointer_tip 框中心；旧版标注只有
-    start/end/point 三个 ROI，需要在 ROI 内用传统视觉算法估计真实几何点。
+    9k 标注直接使用 center/min_tick/max_tick/pointer_tip 框中心；旧版标注只有 start/end/point 三个 ROI，需要在 ROI 内用传统视觉算法估计真实几何点。
     """
     required_classes = METER_DATA_9K_EXPECTED_CLASSES if annotation_mode == "meter_data_9k" else LEGACY_EXPECTED_CLASSES
     missing = sorted(required_classes - set(instance))
