@@ -5,7 +5,7 @@ import sys
 from recognition_http_server.config import parse_args
 
 
-def test_parse_args_uses_hikvision_environment_defaults(monkeypatch) -> None:  # noqa: ANN001
+def test_parse_args_uses_hikvision_environment_defaults(monkeypatch) -> None:
     monkeypatch.setattr(sys, "argv", ["server.py"])
     monkeypatch.setenv("HIK_HOST", "10.42.0.120")
     monkeypatch.setenv("HIK_USERNAME", "operator")
@@ -24,7 +24,7 @@ def test_parse_args_uses_hikvision_environment_defaults(monkeypatch) -> None:  #
     assert args.ptz_local_ip == "192.168.2.171"
 
 
-def test_parse_args_supports_virtual_ptz_controller(monkeypatch) -> None:  # noqa: ANN001
+def test_parse_args_supports_virtual_ptz_controller(monkeypatch) -> None:
     monkeypatch.setattr(
         sys,
         "argv",
