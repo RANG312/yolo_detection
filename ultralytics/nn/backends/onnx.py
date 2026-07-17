@@ -81,7 +81,9 @@ class ONNXBackend(BaseBackend):
                 else:
                     raise
 
-            active_provider = self.session.get_providers()[0] if self.session.get_providers() else "UnknownExecutionProvider"
+            active_provider = (
+                self.session.get_providers()[0] if self.session.get_providers() else "UnknownExecutionProvider"
+            )
             LOGGER.info(f"Using ONNX Runtime {onnxruntime.__version__} with {active_provider}")
             self.output_names = [x.name for x in self.session.get_outputs()]
 
