@@ -16,7 +16,7 @@ IMAGE_RECOGNIZE_TYPE="${IMAGE_RECOGNIZE_TYPE:-1}"
 IMAGE_RECOGNIZE_SUBTYPE="${IMAGE_RECOGNIZE_SUBTYPE:-default}"
 
 usage() {
-  cat <<EOF
+  cat << EOF
 Usage: $(basename "$0") [options]
 
 Options:
@@ -70,7 +70,7 @@ while [[ $# -gt 0 ]]; do
       IMAGE_RECOGNIZE_SUBTYPE="$2"
       shift 2
       ;;
-    -h|--help)
+    -h | --help)
       usage
       exit 0
       ;;
@@ -132,7 +132,7 @@ WORKSPACE_CONFIG_FILE="${WORKSPACE_DIR}/config/recognition.yaml"
 WORKSPACE_SOURCE_SCRIPT="${WORKSPACE_DIR}/source_ros2_ws.bash"
 WORKSPACE_LAUNCH_SCRIPT="${WORKSPACE_DIR}/launch_recognition_service.sh"
 
-cat > "${WORKSPACE_CONFIG_FILE}" <<EOF
+cat > "${WORKSPACE_CONFIG_FILE}" << EOF
 repo_root: ${REPO_ROOT}
 node_name: recognition_service_node
 
@@ -160,7 +160,7 @@ image_recognize_type: "${IMAGE_RECOGNIZE_TYPE}"
 image_recognize_subtype: "${IMAGE_RECOGNIZE_SUBTYPE}"
 EOF
 
-cat > "${WORKSPACE_SOURCE_SCRIPT}" <<EOF
+cat > "${WORKSPACE_SOURCE_SCRIPT}" << EOF
 #!/usr/bin/env bash
 set -e
 DEFAULT_CONDA_SH="\${HOME}/miniconda3/etc/profile.d/conda.sh"
@@ -193,7 +193,7 @@ fi
 EOF
 chmod +x "${WORKSPACE_SOURCE_SCRIPT}"
 
-cat > "${WORKSPACE_LAUNCH_SCRIPT}" <<EOF
+cat > "${WORKSPACE_LAUNCH_SCRIPT}" << EOF
 #!/usr/bin/env bash
 set -e
 source /opt/ros/${ROS_DISTRO_NAME}/setup.bash
