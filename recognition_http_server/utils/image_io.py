@@ -41,11 +41,9 @@ def _resize_image(logger, source_path: Path, target_path: Path, req_id: str, ind
 
 
 def prepare_image(logger, input_root: Path, request_timeout: int, req_id: str, index: int, image_path: str) -> Path:
-    """
-    将输入图片统一准备为本地文件路径。
+    """将输入图片统一准备为本地文件路径。.
 
-    同时兼容远程 HTTP/HTTPS 图片和已有本地文件，保证下游识别链路始终
-    只处理本地路径。
+    同时兼容远程 HTTP/HTTPS 图片和已有本地文件，保证下游识别链路始终 只处理本地路径。
     """
     task_input_dir = input_root / req_id
     task_input_dir.mkdir(parents=True, exist_ok=True)
@@ -57,7 +55,9 @@ def prepare_image(logger, input_root: Path, request_timeout: int, req_id: str, i
         response = requests.get(image_path, timeout=request_timeout)
         response.raise_for_status()
         target_path.write_bytes(response.content)
-        logger.info("image downloaded: req_id=%s index=%s target=%s bytes=%s", req_id, index, target_path, len(response.content))
+        logger.info(
+            "image downloaded: req_id=%s index=%s target=%s bytes=%s", req_id, index, target_path, len(response.content)
+        )
         resized_path = _scaled_image_path(task_input_dir, index, target_path)
         return _resize_image(logger, target_path, resized_path, req_id, index)
 

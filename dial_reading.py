@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-from ultralytics import YOLO
 
 from recognition_http_server.dial_reading import (
     LEGACY_EXPECTED_CLASSES,
@@ -27,6 +26,7 @@ from recognition_http_server.dial_reading import (
 from recognition_http_server.dial_reading import pipeline as _pipeline
 from recognition_http_server.dial_reading.cli import main, parse_args, run_test_loop
 from recognition_http_server.dial_reading.pipeline import predict_single_image
+from ultralytics import YOLO
 
 
 # 这个文件只保留旧入口兼容层。新代码应优先从
@@ -37,12 +37,11 @@ def predict_image_instances(
     args: Any,
     annotation_mode: str,
 ) -> tuple[np.ndarray, list[dict[str, Any]], float, float]:
-    """
-    Backward-compatible wrapper for callers that monkeypatch this legacy module.
+    """Backward-compatible wrapper for callers that monkeypatch this legacy module.
 
-    Older tests and scripts patch `dial_reading.compute_reading_from_detection_instance`.
-    The real implementation now lives in `recognition_http_server.dial_reading.pipeline`,
-    so this wrapper mirrors the patched function into the pipeline before executing.
+    Older tests and scripts patch `dial_reading.compute_reading_from_detection_instance`. The real implementation now
+    lives in `recognition_http_server.dial_reading.pipeline`, so this wrapper mirrors the patched function into the
+    pipeline before executing.
     """
     _pipeline.compute_reading_from_detection_instance = compute_reading_from_detection_instance
     return _pipeline.predict_image_instances(image_path, model, args, annotation_mode)

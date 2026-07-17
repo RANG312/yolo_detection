@@ -11,19 +11,21 @@ from recognition_http_server.helpers import make_error_payload, now_text
 
 
 class RecognitionHandler(BaseHTTPRequestHandler):
-    """识别服务的 HTTP 协议层，负责健康检查、任务提交和任务查询。"""
+    """识别服务的 HTTP 协议层，负责健康检查、任务提交和任务查询。."""
 
-    server: "RecognitionAPIServer"
+    server: RecognitionAPIServer
 
     @property
     def logger(self) -> logging.Logger:
         return GlobalLogManager.get_logger("recognition.http")
 
-    def do_GET(self) -> None:  # noqa: N802
-        """处理健康检查和任务状态查询接口。"""
+    def do_GET(self) -> None:
+        """处理健康检查和任务状态查询接口。."""
         if self.path == "/health":
             self.logger.debug("health check requested: client=%s", self.client_address[0])
-            self._send_json(HTTPStatus.OK, {"code": 0, "resp_msg": "ok", "data": {"status": "healthy", "time": now_text()}})
+            self._send_json(
+                HTTPStatus.OK, {"code": 0, "resp_msg": "ok", "data": {"status": "healthy", "time": now_text()}}
+            )
             return
 
         if self.path.startswith("/api/v1/recognition/tasks/"):
@@ -52,8 +54,8 @@ class RecognitionHandler(BaseHTTPRequestHandler):
 
         self._send_json(HTTPStatus.NOT_FOUND, make_error_payload(None, "Path not found."))
 
-    def do_POST(self) -> None:  # noqa: N802
-        """处理异步任务提交，并立即返回 accepted 响应。"""
+    def do_POST(self) -> None:
+        """处理异步任务提交，并立即返回 accepted 响应。."""
         if self.path != "/api/v1/recognition/tasks":
             self._send_json(HTTPStatus.NOT_FOUND, make_error_payload(None, "Path not found."))
             return
@@ -92,7 +94,7 @@ class RecognitionHandler(BaseHTTPRequestHandler):
         self._send_json(HTTPStatus.OK, response)
 
     def _get_callback_host(self) -> str:
-        """从代理头或客户端连接信息中推断回调主机地址。"""
+        """从代理头或客户端连接信息中推断回调主机地址。."""
         forwarded_for = self.headers.get("X-Forwarded-For", "").strip()
         if forwarded_for:
             return forwarded_for.split(",")[0].strip()
@@ -102,12 +104,12 @@ class RecognitionHandler(BaseHTTPRequestHandler):
         return self.client_address[0]
 
     def log_message(self, format: str, *args: Any) -> None:
-        """将默认 HTTP 访问日志重定向到项目日志系统。"""
+        """将默认 HTTP 访问日志重定向到项目日志系统。."""
         message = format % args
         self.logger.info("access: client=%s message=%s", self.address_string(), message)
 
     def _read_json_body(self) -> dict[str, Any]:
-        """读取并校验当前 HTTP 请求中的 JSON 请求体。"""
+        """读取并校验当前 HTTP 请求中的 JSON 请求体。."""
         content_length = int(self.headers.get("Content-Length", "0"))
         if content_length <= 0:
             raise ValueError("Request body is empty.")
@@ -127,7 +129,7 @@ class RecognitionHandler(BaseHTTPRequestHandler):
         return payload
 
     def _send_json(self, status_code: int, payload: dict[str, Any]) -> None:
-        """按指定状态码发送 UTF-8 编码的 JSON 响应。"""
+        """按指定状态码发送 UTF-8 编码的 JSON 响应。."""
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         self.send_response(status_code)
         self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -137,7 +139,9 @@ class RecognitionHandler(BaseHTTPRequestHandler):
 
 
 class RecognitionAPIServer(ThreadingHTTPServer):
-    def __init__(self, server_address: tuple[str, int], request_handler_class: type[RecognitionHandler], service) -> None:
-        """创建 HTTP 服务实例，并注入识别业务服务对象。"""
+    def __init__(
+        self, server_address: tuple[str, int], request_handler_class: type[RecognitionHandler], service
+    ) -> None:
+        """创建 HTTP 服务实例，并注入识别业务服务对象。."""
         super().__init__(server_address, request_handler_class)
         self.service = service
