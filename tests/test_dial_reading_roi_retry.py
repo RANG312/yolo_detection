@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from pathlib import Path
-from types import SimpleNamespace
 import sys
 import types
+from pathlib import Path
+from types import SimpleNamespace
 
 import cv2
 import numpy as np
@@ -29,10 +29,10 @@ class FakeBoxes:
     def __init__(self, data: list[list[float]]) -> None:
         self.data = np.array(data, dtype=np.float64)
 
-    def cpu(self) -> "FakeBoxes":
+    def cpu(self) -> FakeBoxes:
         return self
 
-    def numpy(self) -> "FakeBoxes":
+    def numpy(self) -> FakeBoxes:
         return self
 
 
@@ -47,7 +47,7 @@ class FakeModel:
     def __init__(self) -> None:
         self.sources: list[np.ndarray] = []
 
-    def predict(self, source, imgsz, conf, device, verbose):  # noqa: ANN001, ANN201
+    def predict(self, source, imgsz, conf, device, verbose):
         del imgsz, conf, device, verbose
         self.sources.append(source.copy())
         if len(self.sources) == 1:
@@ -68,7 +68,7 @@ class FakeRetryFailureModel:
     def __init__(self) -> None:
         self.sources: list[np.ndarray] = []
 
-    def predict(self, source, imgsz, conf, device, verbose):  # noqa: ANN001, ANN201
+    def predict(self, source, imgsz, conf, device, verbose):
         del imgsz, conf, device, verbose
         self.sources.append(source.copy())
         if len(self.sources) == 1:
@@ -80,7 +80,7 @@ class FakeMultiGaugeModel:
     def __init__(self) -> None:
         self.sources: list[np.ndarray] = []
 
-    def predict(self, source, imgsz, conf, device, verbose):  # noqa: ANN001, ANN201
+    def predict(self, source, imgsz, conf, device, verbose):
         del imgsz, conf, device, verbose
         self.sources.append(source.copy())
         if len(self.sources) == 1:
@@ -108,7 +108,7 @@ class FakeTwoPassAlignmentModel:
     def __init__(self) -> None:
         self.sources: list[np.ndarray] = []
 
-    def predict(self, source, imgsz, conf, device, verbose):  # noqa: ANN001, ANN201
+    def predict(self, source, imgsz, conf, device, verbose):
         del imgsz, conf, device, verbose
         self.sources.append(source.copy())
         if len(self.sources) == 1:
@@ -130,7 +130,7 @@ class FakeTwoPassAlignmentModel:
 
 
 class FakeAlignmentZoomModel(FakeTwoPassAlignmentModel):
-    def predict(self, source, imgsz, conf, device, verbose):  # noqa: ANN001, ANN201
+    def predict(self, source, imgsz, conf, device, verbose):
         del imgsz, conf, device, verbose
         self.sources.append(source.copy())
         if len(self.sources) == 1:
@@ -158,10 +158,10 @@ class FakeController:
         self.requests = []
         self.zoom_requests = []
 
-    def align(self, request):  # noqa: ANN001, ANN202
+    def align(self, request):
         self.requests.append(request)
 
-    def zoom(self, request):  # noqa: ANN001, ANN202
+    def zoom(self, request):
         self.zoom_requests.append(request)
 
 
@@ -179,7 +179,7 @@ def test_meter_data_9k_retries_on_resized_gauge_crop(tmp_path: Path, monkeypatch
     image = np.full((240, 320, 3), 255, dtype=np.uint8)
     cv2.imwrite(str(image_path), image)
 
-    def fake_compute(image, instance, annotation_mode, debug_center):  # noqa: ANN001, ANN202
+    def fake_compute(image, instance, annotation_mode, debug_center):
         del annotation_mode, debug_center
         return {
             "gauge_box": instance["gauge"]["box"],
@@ -202,9 +202,7 @@ def test_meter_data_9k_retries_on_resized_gauge_crop(tmp_path: Path, monkeypatch
     model = FakeModel()
     args = SimpleNamespace(imgsz=640, conf=0.25, device="cpu", min_value=0.0, max_value=1.0, debug_center=False)
 
-    canvas, prediction_instances, _, _ = dial_reading.predict_image_instances(
-        image_path, model, args, "meter_data_9k"
-    )
+    canvas, prediction_instances, _, _ = dial_reading.predict_image_instances(image_path, model, args, "meter_data_9k")
 
     assert len(model.sources) == 2
     assert model.sources[1].shape[:2] == (640, 640)
@@ -219,7 +217,7 @@ def test_meter_data_9k_retries_on_highest_confidence_gauge(tmp_path: Path, monke
     image[:, 180:] = 220
     cv2.imwrite(str(image_path), image)
 
-    def fake_compute(image, instance, annotation_mode, debug_center):  # noqa: ANN001, ANN202
+    def fake_compute(image, instance, annotation_mode, debug_center):
         del annotation_mode, debug_center
         return {
             "gauge_box": instance["gauge"]["box"],
@@ -254,7 +252,7 @@ def test_meter_data_9k_runs_ptz_alignment_after_first_gauge_detection(tmp_path: 
     image = np.full((240, 320, 3), 255, dtype=np.uint8)
     cv2.imwrite(str(image_path), image)
 
-    def fake_compute(image, instance, annotation_mode, debug_center):  # noqa: ANN001, ANN202
+    def fake_compute(image, instance, annotation_mode, debug_center):
         del annotation_mode, debug_center
         return {
             "gauge_box": instance["gauge"]["box"],
@@ -307,7 +305,7 @@ def test_meter_data_9k_runs_second_alignment_on_captured_image(tmp_path: Path, m
     captured_image = np.full((240, 320, 3), 180, dtype=np.uint8)
     cv2.imwrite(str(image_path), image)
 
-    def fake_compute(image, instance, annotation_mode, debug_center):  # noqa: ANN001, ANN202
+    def fake_compute(image, instance, annotation_mode, debug_center):
         del annotation_mode, debug_center
         return {
             "gauge_box": instance["gauge"]["box"],
@@ -362,7 +360,7 @@ def test_meter_data_9k_saves_ptz_captures_and_final_aligned_image(tmp_path: Path
     captured_image = np.full((240, 320, 3), 180, dtype=np.uint8)
     cv2.imwrite(str(image_path), image)
 
-    def fake_compute(image, instance, annotation_mode, debug_center):  # noqa: ANN001, ANN202
+    def fake_compute(image, instance, annotation_mode, debug_center):
         del annotation_mode, debug_center
         return {
             "gauge_box": instance["gauge"]["box"],
@@ -430,9 +428,7 @@ def test_meter_data_9k_returns_original_canvas_when_gauge_retry_fails(tmp_path: 
     model = FakeRetryFailureModel()
     args = SimpleNamespace(imgsz=640, conf=0.25, device="cpu", min_value=0.0, max_value=1.0, debug_center=False)
 
-    canvas, prediction_instances, _, _ = dial_reading.predict_image_instances(
-        image_path, model, args, "meter_data_9k"
-    )
+    canvas, prediction_instances, _, _ = dial_reading.predict_image_instances(image_path, model, args, "meter_data_9k")
 
     assert len(model.sources) == 2
     assert model.sources[1].shape[:2] == (640, 640)

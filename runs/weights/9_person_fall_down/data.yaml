@@ -1,6 +1,5 @@
 train: /home/robot/wl/det_fall_down_yolo8/train/images
 val: /home/robot/wl/det_fall_down_yolo8/val/images
 
-
 nc: 2
-names: ["fall down","stand person"]
+names: ["fall down", "stand person"]
