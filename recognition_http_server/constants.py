@@ -7,12 +7,10 @@ DEFAULT_METER_MODEL_PATH = "runs/weights/1_dial_reading/best.pt"  # 指针表计
 DEFAULT_FIRE_MODEL_PATH = "runs/weights/6_fire_and_smoke/best_fire.pt"  # 火源检测权重路径
 DEFAULT_SAFEHAT_MODEL_PATH = "runs/weights/7_safe_hat/best_person.pt"  # 安全帽检测权重路径
 DEFAULT_FIRE_PROTECTION_FACILITIES_MODEL_PATH = (
-    "runs/weights/8_fire_protection_facilities/fire-fighting-facilitie_best.pt"
-)  # 消防设施检测权重路径
+    "runs/weights/8_fire_protection_facilities/fire-fighting-facilitie_best.pt"  # 消防设施检测权重路径
+)
 DEFAULT_PERSON_FALL_DOWN_MODEL_PATH = "runs/weights/9_person_fall_down/fall_best.pt"  # 摔倒检测权重路径
-DEFAULT_FIRE_EXTINGUISHER_MODEL_PATH = (
-    "runs/weights/10_fire_extinguisher/extinguisher_best.pt"
-)  # 灭火器检测权重路径
+DEFAULT_FIRE_EXTINGUISHER_MODEL_PATH = "runs/weights/10_fire_extinguisher/extinguisher_best.pt"  # 灭火器检测权重路径
 DEFAULT_PERSON_AND_CARS_MODEL_PATH = "runs/weights/11_person_and_cars/car_best.pt"  # 人车检测权重路径
 DEFAULT_MIN_VALUE = 0.0  # 指针读数任务表盘起始刻度
 DEFAULT_MAX_VALUE = 1.0  # 指针读数任务表盘末端刻度，默认设为 1（归一化）
@@ -35,7 +33,9 @@ DEFAULT_PTZ_ALIGN_MAX_PASSES = 3  # 最多执行几轮“检测表盘 -> 调整�
 DEFAULT_PTZ_HOST = "192.168.1.64"  # 海康设备 IP 地址或主机名
 DEFAULT_PTZ_PORT = 8000  # 海康 SDK 登录端口
 DEFAULT_PTZ_USERNAME = "admin"  # 海康 SDK 默认登录用户名
-DEFAULT_PTZ_PASSWORD = "oetsky@2023"  # 海康 SDK 默认登录密码；不要在源码中保存真实密码，使用 HIK_PASSWORD 或 --ptz-password
+DEFAULT_PTZ_PASSWORD = (
+    "oetsky@2023"  # 海康 SDK 默认登录密码；不要在源码中保存真实密码，使用 HIK_PASSWORD 或 --ptz-password
+)
 DEFAULT_PTZ_CHANNEL = 1  # 海康通道号，抓图 URL 会使用 channel01
 DEFAULT_PTZ_TILT_MIN_DEG = 0.0  # 云台 tilt 最小角度保留参数
 DEFAULT_PTZ_TILT_MAX_DEG = 90.0  # 云台 tilt 最大角度保留参数
@@ -56,7 +56,7 @@ DEFAULT_PTZ_ZOOM_NUDGE_SPEED = 2  # 海康 zoom 连续控制速度等级
 DEFAULT_PTZ_ZOOM_NUDGE_SECONDS = 1  # 单次 zoom in/out 连续控制时长
 DEFAULT_PTZ_ZOOM_NUDGE_STEPS = 1  # 单轮 zoom 调整连续控制次数
 DEFAULT_PTZ_ZOOM_FOCUS_TIMEOUT = 2.0  # zoom 后等待自动对焦稳定的秒数
-DEFAULT_PTZ_ZOOM_MAX_RATIO = 0.0   # 可选最大 zoom 倍率；0 表示使用 SDK FOV 范围估算
+DEFAULT_PTZ_ZOOM_MAX_RATIO = 0.0  # 可选最大 zoom 倍率；0 表示使用 SDK FOV 范围估算
 
 RECOGNIZE_TYPE_METER = "1"  # 表计读数任务 recognize_type 键值
 RECOGNIZE_TYPE_FIRE = "6"  # 火源检测任务 recognize_type 键值

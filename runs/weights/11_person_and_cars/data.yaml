@@ -2,4 +2,4 @@ train: ../train/images
 val: ../valid/images
 
 nc: 6
-names: ['car', 'bus', 'truck', 'person', 'motorcycle', 'bicycle']
+names: ["car", "bus", "truck", "person", "motorcycle", "bicycle"]
