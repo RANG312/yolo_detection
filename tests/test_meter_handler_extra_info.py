@@ -6,7 +6,7 @@ from types import SimpleNamespace
 from recognition_http_server.service import RecognitionService
 
 
-def test_pointer_meter_task_forwards_extra_info_to_runner(monkeypatch, tmp_path: Path) -> None:  # noqa: ANN001
+def test_pointer_meter_task_forwards_extra_info_to_runner(monkeypatch, tmp_path: Path) -> None:
     service = object.__new__(RecognitionService)
     service.config = SimpleNamespace(max_value=1.0)
 
@@ -20,7 +20,7 @@ def test_pointer_meter_task_forwards_extra_info_to_runner(monkeypatch, tmp_path:
         extra_info,
         debug_center,
         scale,
-    ):  # noqa: ANN001, ANN202
+    ):
         nonlocal received_extra_info
         del service_arg, local_image_path, data_types, visualize_path, debug_center, scale
         received_extra_info = extra_info
@@ -40,4 +40,3 @@ def test_pointer_meter_task_forwards_extra_info_to_runner(monkeypatch, tmp_path:
     )
 
     assert received_extra_info == extra_info
-

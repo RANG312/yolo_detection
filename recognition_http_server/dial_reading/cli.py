@@ -8,12 +8,13 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-from ultralytics import YOLO
 
 from recognition_http_server.dial_reading.pipeline import load_model, predict_single_image
 from recognition_http_server.dial_reading.visualization import save_canvas
+from ultralytics import YOLO
 
-timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
 
 # CLI code stays separate from the HTTP service import path.
 def parse_args() -> argparse.Namespace:
@@ -47,17 +48,26 @@ def parse_args() -> argparse.Namespace:
         default=Path("results"),
         help="Root directory used to create a timestamped batch result folder.",
     )
-    parser.add_argument("--debug-center", action="store_true", help="Draw and print center-estimation intermediate points.")
+    parser.add_argument(
+        "--debug-center", action="store_true", help="Draw and print center-estimation intermediate points."
+    )
     parser.add_argument("--show", action="store_true", help="Display the result image.")
-    parser.add_argument("--save", type=Path, default=f"results/dial_reading_{timestamp}.png", help="Optional output image path.")
+    parser.add_argument(
+        "--save", type=Path, default=f"results/dial_reading_{timestamp}.png", help="Optional output image path."
+    )
     args = parser.parse_args()
     if not args.test_loop and args.image is None:
         parser.error("--image is required unless --test-loop is used.")
     return args
 
+
 def run_test_loop(args: argparse.Namespace, model: YOLO) -> None:
     image_paths = sorted(
-        [path for path in args.input_dir.iterdir() if path.is_file() and path.suffix.lower() in {".jpg", ".jpeg", ".png"}]
+        [
+            path
+            for path in args.input_dir.iterdir()
+            if path.is_file() and path.suffix.lower() in {".jpg", ".jpeg", ".png"}
+        ]
     )
     if not image_paths:
         raise FileNotFoundError(f"No images found in: {args.input_dir}")
