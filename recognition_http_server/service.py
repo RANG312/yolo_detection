@@ -1,14 +1,13 @@
 from __future__ import annotations
 
-import threading
 import shutil
+import threading
 import time
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
 import requests
-from ultralytics import YOLO
 
 from log_manager import GlobalLogManager
 from recognition_http_server.constants import (
@@ -23,13 +22,12 @@ from recognition_http_server.constants import (
 from recognition_http_server.dial_reading import load_model
 from recognition_http_server.handlers.detection import run_detection_recognition
 from recognition_http_server.handlers.meter import run_digital_meter_recognition, run_pointer_meter_recognition
-from recognition_http_server.hikvision_ptz import HikvisionPTZConfig, HikvisionPTZController, resolve_sdk_lib_dir
 from recognition_http_server.helpers import (
     align_data_types_to_images,
     build_aligned_image_path,
+    build_callback_url,
     build_detection_result_path,
     build_error_data_entry,
-    build_callback_url,
     normalize_data_types,
     now_text,
     parse_extra_info,
@@ -37,10 +35,12 @@ from recognition_http_server.helpers import (
     resolve_task_kind,
     split_image_paths,
 )
+from recognition_http_server.hikvision_ptz import HikvisionPTZConfig, HikvisionPTZController, resolve_sdk_lib_dir
 from recognition_http_server.ptz_alignment import PTZAlignmentConfig
 from recognition_http_server.schemas import TaskHandler, TaskState
 from recognition_http_server.utils.image_io import prepare_image
 from recognition_http_server.virtual_ptz import VirtualPTZConfig, VirtualPTZController
+from ultralytics import YOLO
 
 
 def resolve_task_callback_url(extra_info: dict[str, Any], callback_host: str, callback_port: int) -> str:
@@ -51,7 +51,7 @@ def resolve_task_callback_url(extra_info: dict[str, Any], callback_host: str, ca
 
 
 class RecognitionService:
-    """识别服务的核心编排层，负责模型加载、任务状态和任务调度。"""
+    """识别服务的核心编排层，负责模型加载、任务状态和任务调度。."""
 
     def __init__(self, config) -> None:
         self.config = config
@@ -159,25 +159,11 @@ class RecognitionService:
         self._task_handlers = self._build_task_handlers()
 
     def _build_task_handlers(self) -> dict[str, TaskHandler]:
-        """集中注册任务处理器，便于后续新增或删减检测类型。"""
+        """集中注册任务处理器，便于后续新增或删减检测类型。."""
         return {
-            TASK_KIND_METER: TaskHandler(
-                TASK_KIND_METER, 
-                "meter", "表计读数", 
-                self._handle_meter_task
-                ),
-            TASK_KIND_FIRE: TaskHandler(
-                TASK_KIND_FIRE,
-                  "fire",
-                    "火源检测",
-                      self._handle_fire_task
-                      ),
-            TASK_KIND_SAFEHAT: TaskHandler(
-                TASK_KIND_SAFEHAT,
-                  "safehat",
-                    "安全帽检测",
-                      self._handle_safehat_task
-                      ),
+            TASK_KIND_METER: TaskHandler(TASK_KIND_METER, "meter", "表计读数", self._handle_meter_task),
+            TASK_KIND_FIRE: TaskHandler(TASK_KIND_FIRE, "fire", "火源检测", self._handle_fire_task),
+            TASK_KIND_SAFEHAT: TaskHandler(TASK_KIND_SAFEHAT, "safehat", "安全帽检测", self._handle_safehat_task),
             TASK_KIND_FIRE_PROTECTION_FACILITIES: TaskHandler(
                 TASK_KIND_FIRE_PROTECTION_FACILITIES,
                 "fire_protection_facilities",
@@ -205,7 +191,7 @@ class RecognitionService:
         }
 
     def create_task(self, payload: dict[str, Any], callback_host: str) -> TaskState:
-        """校验请求参数、注册任务状态，并启动异步后台处理。"""
+        """校验请求参数、注册任务状态，并启动异步后台处理。."""
         req_id = str(payload.get("req_id") or uuid4())
         image_path_value = payload.get("image_path")
         if not isinstance(image_path_value, str) or not image_path_value.strip():
@@ -235,12 +221,12 @@ class RecognitionService:
         return task
 
     def get_task(self, req_id: str) -> TaskState | None:
-        """根据请求 ID 返回当前任务状态。"""
+        """根据请求 ID 返回当前任务状态。."""
         with self._tasks_lock:
             return self._tasks.get(req_id)
 
     def _update_task(self, req_id: str, **updates: Any) -> None:
-        """原子更新任务字段，并刷新最后更新时间。"""
+        """原子更新任务字段，并刷新最后更新时间。."""
         with self._tasks_lock:
             task = self._tasks[req_id]
             for key, value in updates.items():
@@ -248,7 +234,7 @@ class RecognitionService:
             task.updated_at = now_text()
 
     def _process_task(self, req_id: str) -> None:
-        """完整执行一个异步任务，并在结束后统一发送回调结果。"""
+        """完整执行一个异步任务，并在结束后统一发送回调结果。."""
         task = self.get_task(req_id)
         if task is None:
             return
@@ -316,7 +302,7 @@ class RecognitionService:
         debug_center: bool,
         result_dir_name: str | None = None,
     ) -> dict[str, Any]:
-        """处理单张图片，包括输入准备、handler 分发和结果组装。"""
+        """处理单张图片，包括输入准备、handler 分发和结果组装。."""
         local_image_path = prepare_image(
             self.logger, self.input_root, self.config.request_timeout, req_id, index, image_path
         )
@@ -345,9 +331,13 @@ class RecognitionService:
         )
         processing_start = time.perf_counter()
         try:
-            recognize_items = handler.runner(local_image_path, data_type, image_result_path, handler_extra_info, debug_center)
+            recognize_items = handler.runner(
+                local_image_path, data_type, image_result_path, handler_extra_info, debug_center
+            )
             has_success = any(item.get("recognize_value") for item in recognize_items)
-            source_image_path = str(aligned_image_path) if task_kind == TASK_KIND_METER and aligned_image_path.exists() else image_path
+            source_image_path = (
+                str(aligned_image_path) if task_kind == TASK_KIND_METER and aligned_image_path.exists() else image_path
+            )
             result_image_path = str(image_result_path) if has_success else image_path
             if has_success and detection_result_path is not None and image_result_path.exists():
                 detection_result_path.parent.mkdir(parents=True, exist_ok=True)
@@ -401,7 +391,7 @@ class RecognitionService:
         extra_info: dict[str, Any],
         debug_center: bool,
     ) -> list[dict[str, str]]:
-        """将表计请求分发到指针表或数码表处理逻辑。"""
+        """将表计请求分发到指针表或数码表处理逻辑。."""
         meter_subtype = resolve_meter_subtype(data_type["recognize_subtype"])
         if meter_subtype.mode == "digital":
             return run_digital_meter_recognition(self, local_image_path, [data_type], visualize_path, extra_info)
@@ -423,7 +413,7 @@ class RecognitionService:
         extra_info: dict[str, Any],
         debug_center: bool,
     ) -> list[dict[str, str]]:
-        """复用通用检测链路处理火源检测任务。"""
+        """复用通用检测链路处理火源检测任务。."""
         _ = extra_info, debug_center
         return run_detection_recognition(
             self, local_image_path, self.fire_model, [data_type], visualize_path, "火源检测"
@@ -437,7 +427,7 @@ class RecognitionService:
         extra_info: dict[str, Any],
         debug_center: bool,
     ) -> list[dict[str, str]]:
-        """复用通用检测链路处理安全帽检测任务。"""
+        """复用通用检测链路处理安全帽检测任务。."""
         _ = extra_info, debug_center
         return run_detection_recognition(
             self, local_image_path, self.safehat_model, [data_type], visualize_path, "安全帽检测"
@@ -451,7 +441,7 @@ class RecognitionService:
         extra_info: dict[str, Any],
         debug_center: bool,
     ) -> list[dict[str, str]]:
-        """复用通用检测链路处理消防设施检测任务。"""
+        """复用通用检测链路处理消防设施检测任务。."""
         _ = extra_info, debug_center
         return run_detection_recognition(
             self,
@@ -470,7 +460,7 @@ class RecognitionService:
         extra_info: dict[str, Any],
         debug_center: bool,
     ) -> list[dict[str, str]]:
-        """复用通用检测链路处理摔倒检测任务。"""
+        """复用通用检测链路处理摔倒检测任务。."""
         _ = extra_info, debug_center
         return run_detection_recognition(
             self, local_image_path, self.person_fall_down_model, [data_type], visualize_path, "摔倒检测"
@@ -484,7 +474,7 @@ class RecognitionService:
         extra_info: dict[str, Any],
         debug_center: bool,
     ) -> list[dict[str, str]]:
-        """复用通用检测链路处理灭火器检测任务。"""
+        """复用通用检测链路处理灭火器检测任务。."""
         _ = extra_info, debug_center
         return run_detection_recognition(
             self, local_image_path, self.fire_extinguisher_model, [data_type], visualize_path, "灭火器检测"
@@ -498,14 +488,14 @@ class RecognitionService:
         extra_info: dict[str, Any],
         debug_center: bool,
     ) -> list[dict[str, str]]:
-        """复用通用检测链路处理人车检测任务。"""
+        """复用通用检测链路处理人车检测任务。."""
         _ = extra_info, debug_center
         return run_detection_recognition(
             self, local_image_path, self.person_and_cars_model, [data_type], visualize_path, "人车检测"
         )
 
     def _send_callback(self, req_id: str, callback_url: str, callback_payload: dict[str, Any]) -> None:
-        """发送回调结果，并记录回调状态，但不回滚识别任务本身。"""
+        """发送回调结果，并记录回调状态，但不回滚识别任务本身。."""
         try:
             self.logger.info("sending callback: req_id=%s url=%s", req_id, callback_url)
             response = requests.post(callback_url, json=callback_payload, timeout=self.config.request_timeout)

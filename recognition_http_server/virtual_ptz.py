@@ -24,7 +24,7 @@ class VirtualPTZConfig:
 class VirtualPTZController:
     """Record PTZ requests and return a static frame for deployment validation."""
 
-    def __init__(self, config: VirtualPTZConfig, logger=None) -> None:  # noqa: ANN001
+    def __init__(self, config: VirtualPTZConfig, logger=None) -> None:
         self.config = config
         self.logger = logger
         self.alignment_requests: list[PTZAlignmentRequest] = []

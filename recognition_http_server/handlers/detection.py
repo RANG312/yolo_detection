@@ -7,18 +7,20 @@ import cv2
 from recognition_http_server.dial_reading import save_canvas
 
 
-def run_detection_recognition(service, local_image_path: Path, model, data_types: list[dict[str, str]], visualize_path: Path, task_desc: str) -> list[dict[str, str]]:
-    """
-    执行通用目标检测链路，供纯检测型任务复用。
+def run_detection_recognition(
+    service, local_image_path: Path, model, data_types: list[dict[str, str]], visualize_path: Path, task_desc: str
+) -> list[dict[str, str]]:
+    """执行通用目标检测链路，供纯检测型任务复用。.
 
-    该路径适用于火源、安全帽以及后续不需要几何推理或 OCR 后处理的
-    检测任务。
+    该路径适用于火源、安全帽以及后续不需要几何推理或 OCR 后处理的 检测任务。
     """
     image = cv2.imread(str(local_image_path))
     if image is None:
         raise FileNotFoundError(f"Cannot read image: {local_image_path}")
 
-    service.logger.info("detection recognition running: task=%s image=%s output=%s", task_desc, local_image_path, visualize_path)
+    service.logger.info(
+        "detection recognition running: task=%s image=%s output=%s", task_desc, local_image_path, visualize_path
+    )
     with service._predict_lock:
         results = model.predict(
             source=image,
@@ -50,7 +52,7 @@ def run_detection_recognition(service, local_image_path: Path, model, data_types
                     "recognize_type": data_type["recognize_type"],
                     "recognize_subtype": data_type["recognize_subtype"],
                     "recognize_value": label,
-                    "confidence": str(int(round(confidence * 100))),
+                    "confidence": str(round(confidence * 100)),
                     "recognize_desc": f"识别成功，{task_desc}检测到{label}，置信度={confidence:.4f}",
                 }
             )
