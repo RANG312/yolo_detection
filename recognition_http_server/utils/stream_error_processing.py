@@ -7,7 +7,7 @@ import time
 from collections import deque
 from ctypes import byref, c_int, c_uint32, sizeof
 from pathlib import Path
-from typing import Callable, Deque, Dict, Iterable, Optional, Sequence, Union
+from typing import Callable, Dict, Iterable, Sequence
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
@@ -15,7 +15,6 @@ if str(ROOT) not in sys.path:
 
 from log_manager import GlobalLogManager
 from recognition_http_server.utils.capture_gimbal_frames import compute_frame_statistics, mask_source
-
 
 DEFAULT_HIKVISION_ENV_PATH = ROOT / "recognition_http_server" / "hikvision.env"
 DEFAULT_CAPTURE_CLEANUP_DIR = ROOT / "results" / "gimbal_capture"
@@ -34,7 +33,7 @@ if str(SDK_PY_DIR) not in sys.path:
     sys.path.insert(0, str(SDK_PY_DIR))
 
 try:
-    from HCNetSDK import *  # type: ignore  # noqa: F401,F403
+    from HCNetSDK import *  # type: ignore  # noqa: F403
 except Exception:  # pragma: no cover - local non-Linux test environments can still exercise injected paths.
     NET_DVR_GET_CCDPARAMCFG_EX = 3368
     NET_DVR_SET_CCDPARAMCFG_EX = 3369
@@ -63,13 +62,11 @@ class StreamErrorWindow:
         self.min_error_frames = min_error_frames
         self.b_minus_g_threshold = b_minus_g_threshold
         self.green_deficit_threshold = green_deficit_threshold
-        self._decisions: Deque[bool] = deque(maxlen=window_size)
+        self._decisions: deque[bool] = deque(maxlen=window_size)
 
     def add(self, stats: Stats) -> bool:
         """Add one frame stats dict and return whether the window indicates an error."""
-        self._decisions.append(
-            is_stream_error_frame(stats, self.b_minus_g_threshold, self.green_deficit_threshold)
-        )
+        self._decisions.append(is_stream_error_frame(stats, self.b_minus_g_threshold, self.green_deficit_threshold))
         return self.is_error
 
     def clear(self) -> None:
@@ -94,16 +91,16 @@ def is_stream_error_frame(
 
     Two conditions must both be met:
     1. |B - G| < b_minus_g_threshold — the blue channel has caught up to green
-       (IR leaks primarily through R/B Bayer filters, pushing B toward G).
+    (IR leaks primarily through R/B Bayer filters, pushing B toward G).
     2. green_deficit > green_deficit_threshold — a genuine magenta bias exists,
-       ruling out naturally neutral scenes (gray walls, low-light, etc.).
+    ruling out naturally neutral scenes (gray walls, low-light, etc.).
     """
     b_gap = abs(float(stats["b_minus_g"]))
     green_deficit = float(stats["green_deficit"])
     return b_gap < b_minus_g_threshold and green_deficit > green_deficit_threshold
 
 
-def cleanup_capture_images(capture_root: Union[str, Path]) -> int:
+def cleanup_capture_images(capture_root: str | Path) -> int:
     """Delete captured frame image files under capture_root while keeping manifests and other files."""
     root = Path(capture_root)
     if not root.exists():
@@ -120,9 +117,9 @@ def cleanup_capture_images(capture_root: Union[str, Path]) -> int:
 
 
 def reset_camera_day_night_mode(
-    sdk,  # noqa: ANN001
+    sdk,
     user_id: int,
-    camera_param_cls=None,  # noqa: ANN001
+    camera_param_cls=None,
     get_command: int = NET_DVR_GET_CCDPARAMCFG_EX,
     set_command: int = NET_DVR_SET_CCDPARAMCFG_EX,
     channel: int = 1,
@@ -159,15 +156,13 @@ def reset_camera_day_night_mode(
         camera_param.struDayNight.byDayNightFilterType = int(mode)
         ok = sdk.NET_DVR_SetDVRConfig(user_id, set_command, channel, byref(camera_param), sizeof(camera_param))
         if not ok:
-            raise RuntimeError(
-                f"NET_DVR_SET_CCDPARAMCFG_EX failed: mode={mode} error={sdk.NET_DVR_GetLastError()}"
-            )
+            raise RuntimeError(f"NET_DVR_SET_CCDPARAMCFG_EX failed: mode={mode} error={sdk.NET_DVR_GetLastError()}")
         if settle_seconds > 0 and index < len(sequence) - 1:
             time.sleep(settle_seconds)
     return original_mode
 
 
-def reset_hikvision_stream_color(config, settle_seconds: float = 0.5) -> int:  # noqa: ANN001
+def reset_hikvision_stream_color(config, settle_seconds: float = 0.5) -> int:
     """Login through HCNetSDK and apply the day/night reset sequence."""
     from recognition_http_server.hikvision_ptz import _bind_local_ip, _configure_sdk_paths, _load_sdk, _login
 
@@ -191,9 +186,9 @@ def reset_hikvision_stream_color(config, settle_seconds: float = 0.5) -> int:  #
         sdk.NET_DVR_Cleanup()
 
 
-def parse_hikvision_env(path: Union[str, Path] = DEFAULT_HIKVISION_ENV_PATH) -> Dict[str, str]:
+def parse_hikvision_env(path: str | Path = DEFAULT_HIKVISION_ENV_PATH) -> dict[str, str]:
     """Parse a simple KEY=VALUE Hikvision env file."""
-    values: Dict[str, str] = {}
+    values: dict[str, str] = {}
     for line in Path(path).read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if not line or line.startswith("#") or "=" not in line:
@@ -203,7 +198,7 @@ def parse_hikvision_env(path: Union[str, Path] = DEFAULT_HIKVISION_ENV_PATH) -> 
     return values
 
 
-def config_from_env(path: Union[str, Path] = DEFAULT_HIKVISION_ENV_PATH):  # noqa: ANN201
+def config_from_env(path: str | Path = DEFAULT_HIKVISION_ENV_PATH):
     """Build a Hikvision PTZ config from recognition_http_server/hikvision.env."""
     from recognition_http_server.hikvision_ptz import HikvisionPTZConfig
 
@@ -218,13 +213,13 @@ def config_from_env(path: Union[str, Path] = DEFAULT_HIKVISION_ENV_PATH):  # noq
     )
 
 
-def build_rtsp_source(config, stream: str = "main") -> str:  # noqa: ANN001
+def build_rtsp_source(config, stream: str = "main") -> str:
     """Build a Hikvision RTSP source URL for main or sub stream."""
     suffix = "01" if stream == "main" else "02"
     return f"rtsp://{config.username}:{config.password}@{config.host}:554/Streaming/Channels/{config.channel}{suffix}"
 
 
-def iter_stream_statistics(source: Union[int, str], interval: float = 1.0) -> Iterable[Stats]:
+def iter_stream_statistics(source: int | str, interval: float = 1.0) -> Iterable[Stats]:
     """Yield frame statistics from an OpenCV-readable stream."""
     try:
         import cv2
@@ -250,16 +245,16 @@ def _get_monitor_logger() -> logging.Logger:
 
 
 def monitor_stream_and_recover(
-    source: Union[int, str],
+    source: int | str,
     recover: RecoveryCallback,
     interval: float = 1.0,
     window_size: int = DEFAULT_WINDOW_SIZE,
     min_error_frames: int = DEFAULT_MIN_ERROR_FRAMES,
     b_minus_g_threshold: float = DEFAULT_B_MINUS_G_THRESHOLD,
     green_deficit_threshold: float = DEFAULT_GREEN_DEFICIT_THRESHOLD,
-    max_frames: Optional[int] = None,
+    max_frames: int | None = None,
     cooldown_seconds: float = 10.0,
-    cleanup_dir: Optional[Union[str, Path]] = DEFAULT_CAPTURE_CLEANUP_DIR,
+    cleanup_dir: str | Path | None = DEFAULT_CAPTURE_CLEANUP_DIR,
 ) -> None:
     """Monitor stream color statistics and run recovery when the recent window is abnormal."""
     logger = _get_monitor_logger()
@@ -269,16 +264,20 @@ def monitor_stream_and_recover(
         b_gap = compute_stream_error_score(stats)
         is_error = detector.add(stats)
         logger.debug(
-            "frame=%d b_gap=%.3f r_minus_g=%.3f b_minus_g=%.3f "
-            "green_deficit=%.3f window_error=%s",
-            index, b_gap, stats["r_minus_g"], stats["b_minus_g"],
-            stats["green_deficit"], is_error,
+            "frame=%d b_gap=%.3f r_minus_g=%.3f b_minus_g=%.3f green_deficit=%.3f window_error=%s",
+            index,
+            b_gap,
+            stats["r_minus_g"],
+            stats["b_minus_g"],
+            stats["green_deficit"],
+            is_error,
         )
         now = time.monotonic()
         if is_error and now - last_recovery_at >= cooldown_seconds:
             logger.warning(
                 "stream color error detected (b_gap=%.3f, green_deficit=%.3f); resetting camera day/night mode",
-                b_gap, stats["green_deficit"],
+                b_gap,
+                stats["green_deficit"],
             )
             recover()
             if cleanup_dir is not None:
@@ -290,7 +289,7 @@ def monitor_stream_and_recover(
             return
 
 
-def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Detect and recover Hikvision stream color disorder.")
     parser.add_argument("--env", type=Path, default=DEFAULT_HIKVISION_ENV_PATH, help="Path to hikvision.env.")
     parser.add_argument("--source", default="", help="Optional explicit RTSP/source override.")
@@ -298,10 +297,18 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     parser.add_argument("--interval", type=float, default=1.0, help="Seconds between sampled frames.")
     parser.add_argument("--window-size", type=int, default=DEFAULT_WINDOW_SIZE)
     parser.add_argument("--min-error-frames", type=int, default=DEFAULT_MIN_ERROR_FRAMES)
-    parser.add_argument("--b-minus-g-threshold", type=float, default=DEFAULT_B_MINUS_G_THRESHOLD,
-                        help="|B-G| below this value indicates B has caught up to G (IR leak).")
-    parser.add_argument("--green-deficit-threshold", type=float, default=DEFAULT_GREEN_DEFICIT_THRESHOLD,
-                        help="green_deficit above this value confirms magenta cast rather than neutral scene.")
+    parser.add_argument(
+        "--b-minus-g-threshold",
+        type=float,
+        default=DEFAULT_B_MINUS_G_THRESHOLD,
+        help="|B-G| below this value indicates B has caught up to G (IR leak).",
+    )
+    parser.add_argument(
+        "--green-deficit-threshold",
+        type=float,
+        default=DEFAULT_GREEN_DEFICIT_THRESHOLD,
+        help="green_deficit above this value confirms magenta cast rather than neutral scene.",
+    )
     parser.add_argument("--cooldown-seconds", type=float, default=10.0)
     parser.add_argument("--max-frames", type=int, default=0, help="Stop after N frames; 0 means run forever.")
     parser.add_argument(
@@ -310,12 +317,14 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         default=DEFAULT_CAPTURE_CLEANUP_DIR,
         help="Delete frame_*.jpg/jpeg/png under this directory after a successful recovery.",
     )
-    parser.add_argument("--no-cleanup-captures", action="store_true", help="Do not delete captured images after recovery.")
+    parser.add_argument(
+        "--no-cleanup-captures", action="store_true", help="Do not delete captured images after recovery."
+    )
     parser.add_argument("--dry-run", action="store_true", help="Detect only; do not reset camera parameters.")
     return parser.parse_args(argv)
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     config = config_from_env(args.env)
     source = args.source or build_rtsp_source(config, args.stream)
@@ -350,7 +359,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         )
     except KeyboardInterrupt:
         logger.info("stream monitor interrupted by user")
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.exception("stream monitor error: %s", exc)
         return 1
     return 0

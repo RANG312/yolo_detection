@@ -7,8 +7,7 @@ RUN_NAME="meter_data_9k_yolov8m_${RUN_TS}"
 
 python "${ROOT_DIR}/scripts/train_dial_thermometer.py" \
   --data "${ROOT_DIR}/data/new_datas/meter_data_9k/meter_data_9k.yaml" \
-  --batch 16\
-  --workers 8 \
+  --batch 16 --workers 8 \
   --cache disk \
   --amp True \
   --patience 5 \

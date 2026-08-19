@@ -33,8 +33,8 @@ find_conda_base() {
 
   if [[ -n "${CONDA_EXE:-}" && -x "${CONDA_EXE}" ]]; then
     candidate="$(cd "$(dirname "${CONDA_EXE}")/.." && pwd)"
-  elif command -v conda >/dev/null 2>&1; then
-    candidate="$(conda info --base 2>/dev/null || true)"
+  elif command -v conda > /dev/null 2>&1; then
+    candidate="$(conda info --base 2> /dev/null || true)"
     if [[ -z "${candidate}" ]]; then
       candidate="$(cd "$(dirname "$(command -v conda)")/.." && pwd)"
     fi
@@ -71,10 +71,10 @@ find_hik_sdk_library_dir() {
 
   arch="$(uname -m)"
   case "${arch}" in
-    aarch64|arm64)
+    aarch64 | arm64)
       path="${PROJECT_DIR}/HK_SDK/HK_SDK_arm64_Linux/lib/linux"
       ;;
-    x86_64|amd64)
+    x86_64 | amd64)
       for path in \
         "${PROJECT_DIR}/HK_SDK/HK_SDK_x86_Linux/lib/linux" \
         "${PROJECT_DIR}/HK_SDK/HK_SDK_x86_Linux/HCNetSDKV6.1.11.5_build20251204_linux64_ZH/库文件" \
@@ -117,7 +117,7 @@ write_systemd_service_file() {
     cleanup_args="--no-cleanup-captures"
   fi
 
-  sudo tee "${service_path}" >/dev/null <<EOF
+  sudo tee "${service_path}" > /dev/null << EOF
 [Unit]
 Description=Gimbal Stream Color Error Recovery
 After=network-online.target
@@ -187,7 +187,7 @@ show_status() {
 }
 
 usage() {
-  cat <<EOF
+  cat << EOF
 Usage: $(basename "$0") [install|uninstall|status]
 
 Environment overrides:
@@ -220,7 +220,7 @@ main() {
     status)
       show_status
       ;;
-    -h|--help|help)
+    -h | --help | help)
       usage
       ;;
     *)
