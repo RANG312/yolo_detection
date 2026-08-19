@@ -17,38 +17,38 @@ from recognition_http_server.constants import (
     DEFAULT_MIN_VALUE,
     DEFAULT_PERSON_AND_CARS_MODEL_PATH,
     DEFAULT_PERSON_FALL_DOWN_MODEL_PATH,
+    DEFAULT_PORT,
     DEFAULT_PTZ_ALIGN_ENABLED,
     DEFAULT_PTZ_ALIGN_MAX_DELTA_DEG,
     DEFAULT_PTZ_ALIGN_MAX_PASSES,
     DEFAULT_PTZ_ALIGN_THRESHOLD_DEG,
     DEFAULT_PTZ_CHANNEL,
-    DEFAULT_PTZ_HOST,
     DEFAULT_PTZ_HORIZONTAL_FOV_DEG,
-    DEFAULT_PTZ_PASSWORD,
-    DEFAULT_PTZ_PAN_NUDGE_DEGREES_PER_SECOND,
-    DEFAULT_PTZ_PORT,
-    DEFAULT_PTZ_SETTLE_SECONDS,
-    DEFAULT_PTZ_TILT_MAX_DEG,
-    DEFAULT_PTZ_TILT_MIN_DEG,
-    DEFAULT_PTZ_TILT_NUDGE_DEGREES_PER_SECOND,
+    DEFAULT_PTZ_HOST,
     DEFAULT_PTZ_NUDGE_DEGREES_PER_SECOND,
     DEFAULT_PTZ_NUDGE_MAX_SECONDS,
     DEFAULT_PTZ_NUDGE_MAX_STEPS,
     DEFAULT_PTZ_NUDGE_MIN_SECONDS,
     DEFAULT_PTZ_NUDGE_SPEED,
+    DEFAULT_PTZ_PAN_NUDGE_DEGREES_PER_SECOND,
+    DEFAULT_PTZ_PASSWORD,
+    DEFAULT_PTZ_PORT,
+    DEFAULT_PTZ_SETTLE_SECONDS,
+    DEFAULT_PTZ_TILT_MAX_DEG,
+    DEFAULT_PTZ_TILT_MIN_DEG,
+    DEFAULT_PTZ_TILT_NUDGE_DEGREES_PER_SECOND,
     DEFAULT_PTZ_TILT_NUDGE_SCALE,
     DEFAULT_PTZ_USERNAME,
     DEFAULT_PTZ_VERTICAL_FOV_DEG,
     DEFAULT_PTZ_ZOOM_ENABLED,
     DEFAULT_PTZ_ZOOM_FOCUS_TIMEOUT,
-    DEFAULT_PTZ_ZOOM_MAX_RATIO,
     DEFAULT_PTZ_ZOOM_MAX_PASSES,
+    DEFAULT_PTZ_ZOOM_MAX_RATIO,
     DEFAULT_PTZ_ZOOM_NUDGE_SECONDS,
     DEFAULT_PTZ_ZOOM_NUDGE_SPEED,
     DEFAULT_PTZ_ZOOM_NUDGE_STEPS,
     DEFAULT_PTZ_ZOOM_RATIO_TOLERANCE,
     DEFAULT_PTZ_ZOOM_TARGET_HEIGHT_RATIO,
-    DEFAULT_PORT,
     DEFAULT_REQUEST_TIMEOUT,
     DEFAULT_RESULT_ROOT,
     DEFAULT_SAFEHAT_MODEL_PATH,
@@ -56,7 +56,7 @@ from recognition_http_server.constants import (
 
 
 def parse_args() -> argparse.Namespace:
-    """解析 HTTP 识别服务的命令行启动参数。"""
+    """解析 HTTP 识别服务的命令行启动参数。."""
     parser = argparse.ArgumentParser(description="Recognition HTTP service.")
     parser.add_argument("--host", default=DEFAULT_HOST, help="Server bind host.")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT, help="Server bind port.")
@@ -121,7 +121,9 @@ def parse_args() -> argparse.Namespace:
         default=os.environ.get("VIRTUAL_PTZ_IMAGE", ""),
         help="Static image returned after virtual PTZ movement or zoom requests.",
     )
-    parser.add_argument("--ptz-host", default=os.environ.get("HIK_HOST", DEFAULT_PTZ_HOST), help="Hikvision device host.")
+    parser.add_argument(
+        "--ptz-host", default=os.environ.get("HIK_HOST", DEFAULT_PTZ_HOST), help="Hikvision device host."
+    )
     parser.add_argument(
         "--ptz-port",
         type=int,
@@ -151,8 +153,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--ptz-settle-seconds", type=float, default=DEFAULT_PTZ_SETTLE_SECONDS)
     parser.add_argument("--ptz-nudge-speed", type=int, default=DEFAULT_PTZ_NUDGE_SPEED)
     parser.add_argument("--ptz-nudge-degrees-per-second", type=float, default=DEFAULT_PTZ_NUDGE_DEGREES_PER_SECOND)
-    parser.add_argument("--ptz-pan-nudge-degrees-per-second", type=float, default=DEFAULT_PTZ_PAN_NUDGE_DEGREES_PER_SECOND)
-    parser.add_argument("--ptz-tilt-nudge-degrees-per-second", type=float, default=DEFAULT_PTZ_TILT_NUDGE_DEGREES_PER_SECOND)
+    parser.add_argument(
+        "--ptz-pan-nudge-degrees-per-second", type=float, default=DEFAULT_PTZ_PAN_NUDGE_DEGREES_PER_SECOND
+    )
+    parser.add_argument(
+        "--ptz-tilt-nudge-degrees-per-second", type=float, default=DEFAULT_PTZ_TILT_NUDGE_DEGREES_PER_SECOND
+    )
     parser.add_argument("--ptz-nudge-min-seconds", type=float, default=DEFAULT_PTZ_NUDGE_MIN_SECONDS)
     parser.add_argument("--ptz-nudge-max-seconds", type=float, default=DEFAULT_PTZ_NUDGE_MAX_SECONDS)
     parser.add_argument("--ptz-nudge-max-steps", type=int, default=DEFAULT_PTZ_NUDGE_MAX_STEPS)

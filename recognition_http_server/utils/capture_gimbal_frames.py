@@ -10,20 +10,19 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Iterable, Optional, Tuple, Union
+from typing import Dict, Iterable, Tuple, Union
 from urllib.parse import urlsplit, urlunsplit
-
 
 ManifestRow = Dict[str, Union[int, float, str]]
 ROI = Tuple[int, int, int, int]
 
 
-def parse_source(value: str) -> Union[int, str]:
+def parse_source(value: str) -> int | str:
     """Return an OpenCV device index for integer sources, otherwise the original source string."""
     return int(value) if value.isdigit() else value
 
 
-def mask_source(value: Union[int, str]) -> str:
+def mask_source(value: int | str) -> str:
     """Return a display-safe source string with URL passwords hidden."""
     if isinstance(value, int):
         return str(value)
@@ -37,7 +36,7 @@ def mask_source(value: Union[int, str]) -> str:
     return urlunsplit((parts.scheme, netloc, parts.path, parts.query, parts.fragment))
 
 
-def parse_roi(value: Optional[str]) -> Optional[ROI]:
+def parse_roi(value: str | None) -> ROI | None:
     """Parse an ROI string in x,y,w,h format."""
     if not value:
         return None
@@ -53,14 +52,14 @@ def parse_roi(value: Optional[str]) -> Optional[ROI]:
     return x, y, width, height
 
 
-def _image_size(image) -> Tuple[int, int]:  # noqa: ANN001
+def _image_size(image) -> tuple[int, int]:
     shape = getattr(image, "shape", None)
     if shape is not None and len(shape) >= 2:
         return int(shape[1]), int(shape[0])
     return len(image[0]), len(image)
 
 
-def _iter_bgr_pixels(image, roi: Optional[ROI] = None) -> Iterable[Tuple[int, int, int]]:  # noqa: ANN001
+def _iter_bgr_pixels(image, roi: ROI | None = None) -> Iterable[tuple[int, int, int]]:
     image_width, image_height = _image_size(image)
     if roi is None:
         x0, y0, width, height = 0, 0, image_width, image_height
@@ -68,8 +67,7 @@ def _iter_bgr_pixels(image, roi: Optional[ROI] = None) -> Iterable[Tuple[int, in
         x0, y0, width, height = roi
         if x0 + width > image_width or y0 + height > image_height:
             raise ValueError(
-                f"ROI x={x0} y={y0} width={width} height={height} exceeds image size "
-                f"{image_width}x{image_height}"
+                f"ROI x={x0} y={y0} width={width} height={height} exceeds image size {image_width}x{image_height}"
             )
 
     for y in range(y0, y0 + height):
@@ -78,7 +76,7 @@ def _iter_bgr_pixels(image, roi: Optional[ROI] = None) -> Iterable[Tuple[int, in
             yield int(b), int(g), int(r)
 
 
-def compute_frame_statistics(image, roi: Optional[ROI] = None) -> Dict[str, float]:  # noqa: ANN001
+def compute_frame_statistics(image, roi: ROI | None = None) -> dict[str, float]:
     """Compute RGB mean/std and simple magenta-bias metrics for one BGR image."""
     count = 0
     sums = {"r": 0.0, "g": 0.0, "b": 0.0}
@@ -128,7 +126,7 @@ def compute_frame_statistics(image, roi: Optional[ROI] = None) -> Dict[str, floa
     }
 
 
-def create_run_dir(base_dir: Path, now: Optional[datetime] = None) -> Path:
+def create_run_dir(base_dir: Path, now: datetime | None = None) -> Path:
     """Create and return a timestamped capture output directory."""
     timestamp = (now or datetime.now()).strftime("%Y%m%d_%H%M%S")
     output_dir = base_dir / timestamp
@@ -138,7 +136,7 @@ def create_run_dir(base_dir: Path, now: Optional[datetime] = None) -> Path:
 
 def write_manifest_row(writer: csv.DictWriter, row: ManifestRow) -> None:
     """Write one manifest row after normalizing float precision."""
-    normalized: Dict[str, Union[int, str]] = {}
+    normalized: dict[str, int | str] = {}
     for key, value in row.items():
         normalized[key] = f"{value:.6f}" if isinstance(value, float) else value
     writer.writerow(normalized)
@@ -149,7 +147,9 @@ def capture_frames(args: argparse.Namespace) -> Path:
     try:
         import cv2
     except ImportError as exc:
-        raise RuntimeError("OpenCV is required for capture. Install opencv-python or use the Jetson runtime env.") from exc
+        raise RuntimeError(
+            "OpenCV is required for capture. Install opencv-python or use the Jetson runtime env."
+        ) from exc
 
     source = parse_source(args.source)
     safe_source = mask_source(source)
@@ -244,9 +244,11 @@ def capture_frames(args: argparse.Namespace) -> Path:
     return output_dir
 
 
-def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--source", required=True, help="RTSP/HTTP/file video source, or numeric device index such as 0.")
+    parser.add_argument(
+        "--source", required=True, help="RTSP/HTTP/file video source, or numeric device index such as 0."
+    )
     parser.add_argument(
         "--output-dir",
         type=Path,
@@ -255,7 +257,9 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     )
     parser.add_argument("--interval", type=float, default=1.0, help="Seconds between saved frames.")
     parser.add_argument("--count", type=int, default=60, help="Number of frames to save. Use 0 for unlimited capture.")
-    parser.add_argument("--warmup", type=float, default=0.0, help="Seconds to wait after opening the source before saving.")
+    parser.add_argument(
+        "--warmup", type=float, default=0.0, help="Seconds to wait after opening the source before saving."
+    )
     parser.add_argument("--jpeg-quality", type=int, default=95, choices=range(1, 101), metavar="[1-100]")
     parser.add_argument("--roi", type=parse_roi, default=None, help="Optional statistics ROI in x,y,w,h format.")
     parser.add_argument(
@@ -276,11 +280,11 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     return args
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     try:
         capture_frames(args)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
     return 0

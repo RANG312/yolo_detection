@@ -1,12 +1,10 @@
-# coding=utf-8
-
 import ctypes
 import sys
 from ctypes import *
 
 # 回调函数类型定义
 
-if 'linux' in sys.platform:
+if "linux" in sys.platform:
     fun_ctype = CFUNCTYPE
 else:
     fun_ctype = WINFUNCTYPE
@@ -651,8 +649,14 @@ class NET_DVR_DEVICEINFO_V30(ctypes.Structure):
         ("byAudioChanNum", c_byte),  # 设备语音对讲通道数
         ("byIPChanNum", c_byte),  # 设备最大数字通道个数，低8位，高8位见byHighDChanNum
         ("byZeroChanNum", c_byte),  # 零通道编码个数
-        ("byMainProto", c_byte),  # 主码流传输协议类型：0- private，1- rtsp，2- 同时支持私有协议和rtsp协议取流（默认采用私有协议取流）
-        ("bySubProto", c_byte),  # 子码流传输协议类型：0- private，1- rtsp，2- 同时支持私有协议和rtsp协议取流（默认采用私有协议取流）
+        (
+            "byMainProto",
+            c_byte,
+        ),  # 主码流传输协议类型：0- private，1- rtsp，2- 同时支持私有协议和rtsp协议取流（默认采用私有协议取流）
+        (
+            "bySubProto",
+            c_byte,
+        ),  # 子码流传输协议类型：0- private，1- rtsp，2- 同时支持私有协议和rtsp协议取流（默认采用私有协议取流）
         ("bySupport", c_byte),  # 能力，位与结果为0表示不支持，1表示支持
         # bySupport & 0x1，表示是否支持智能搜索
         # bySupport & 0x2，表示是否支持备份
@@ -716,7 +720,8 @@ class NET_DVR_DEVICEINFO_V30(ctypes.Structure):
         # bySupport7 & 0x20 表示设备是否支持OSD字符叠加V50
         # bySupport7 & 0x40 表示设备是否支持主从（从摄像机）
         # bySupport7 & 0x80 表示设备是否支持报文加密
-        ("byRes2", c_byte)]  # 保留，置为0
+        ("byRes2", c_byte),
+    ]  # 保留，置为0
 
 
 LPNET_DVR_DEVICEINFO_V30 = POINTER(NET_DVR_DEVICEINFO_V30)
@@ -725,30 +730,39 @@ LPNET_DVR_DEVICEINFO_V30 = POINTER(NET_DVR_DEVICEINFO_V30)
 # 设备参数结构体 V40
 class NET_DVR_DEVICEINFO_V40(ctypes.Structure):
     _fields_ = [
-        ('struDeviceV30', NET_DVR_DEVICEINFO_V30),  # 设备信息
-        ('bySupportLock', c_byte),  # 设备支持锁定功能，该字段由SDK根据设备返回值来赋值的。bySupportLock为1时，dwSurplusLockTime和byRetryLoginTime有效
-        ('byRetryLoginTime', c_byte),  # 剩余可尝试登陆的次数，用户名，密码错误时，此参数有效
-        ('byPasswordLevel', c_byte),  # admin密码安全等级
-        ('byProxyType', c_byte),  # 代理类型，0-不使用代理, 1-使用socks5代理, 2-使用EHome代理
-        ('dwSurplusLockTime', c_uint32),  # 剩余时间，单位秒，用户锁定时，此参数有效
-        ('byCharEncodeType', c_byte),  # 字符编码类型
-        ('bySupportDev5', c_byte),  # 支持v50版本的设备参数获取，设备名称和设备类型名称长度扩展为64字节
-        ('bySupport', c_byte),  # 能力集扩展，位与结果：0- 不支持，1- 支持
-        ('byLoginMode', c_byte),  # 登录模式:0- Private登录，1- ISAPI登录
-        ('dwOEMCode', c_uint32),  # OEM Code
-        ('iResidualValidity', c_uint32),  # 该用户密码剩余有效天数，单位：天，返回负值，表示密码已经超期使用，例如“-3表示密码已经超期使用3天”
-        ('byResidualValidity', c_byte),  # iResidualValidity字段是否有效，0-无效，1-有效
-        ('bySingleStartDTalkChan', c_byte),  # 独立音轨接入的设备，起始接入通道号，0-为保留字节，无实际含义，音轨通道号不能从0开始
-        ('bySingleDTalkChanNums', c_byte),  # 独立音轨接入的设备的通道总数，0-表示不支持
-        ('byPassWordResetLevel', c_byte),  # 0-无效，
+        ("struDeviceV30", NET_DVR_DEVICEINFO_V30),  # 设备信息
+        (
+            "bySupportLock",
+            c_byte,
+        ),  # 设备支持锁定功能，该字段由SDK根据设备返回值来赋值的。bySupportLock为1时，dwSurplusLockTime和byRetryLoginTime有效
+        ("byRetryLoginTime", c_byte),  # 剩余可尝试登陆的次数，用户名，密码错误时，此参数有效
+        ("byPasswordLevel", c_byte),  # admin密码安全等级
+        ("byProxyType", c_byte),  # 代理类型，0-不使用代理, 1-使用socks5代理, 2-使用EHome代理
+        ("dwSurplusLockTime", c_uint32),  # 剩余时间，单位秒，用户锁定时，此参数有效
+        ("byCharEncodeType", c_byte),  # 字符编码类型
+        ("bySupportDev5", c_byte),  # 支持v50版本的设备参数获取，设备名称和设备类型名称长度扩展为64字节
+        ("bySupport", c_byte),  # 能力集扩展，位与结果：0- 不支持，1- 支持
+        ("byLoginMode", c_byte),  # 登录模式:0- Private登录，1- ISAPI登录
+        ("dwOEMCode", c_uint32),  # OEM Code
+        (
+            "iResidualValidity",
+            c_uint32,
+        ),  # 该用户密码剩余有效天数，单位：天，返回负值，表示密码已经超期使用，例如“-3表示密码已经超期使用3天”
+        ("byResidualValidity", c_byte),  # iResidualValidity字段是否有效，0-无效，1-有效
+        (
+            "bySingleStartDTalkChan",
+            c_byte,
+        ),  # 独立音轨接入的设备，起始接入通道号，0-为保留字节，无实际含义，音轨通道号不能从0开始
+        ("bySingleDTalkChanNums", c_byte),  # 独立音轨接入的设备的通道总数，0-表示不支持
+        ("byPassWordResetLevel", c_byte),  # 0-无效，
         # 1- 管理员创建一个非管理员用户为其设置密码，该非管理员用户正确登录设备后要提示“请修改初始登录密码”，未修改的情况下，用户每次登入都会进行提醒；
         # 2- 当非管理员用户的密码被管理员修改，该非管理员用户再次正确登录设备后，需要提示“请重新设置登录密码”，未修改的情况下，用户每次登入都会进行提醒。
-        ('bySupportStreamEncrypt', c_byte),  # 能力集扩展，位与结果：0- 不支持，1- 支持
+        ("bySupportStreamEncrypt", c_byte),  # 能力集扩展，位与结果：0- 不支持，1- 支持
         # bySupportStreamEncrypt & 0x1 表示是否支持RTP/TLS取流
         # bySupportStreamEncrypt & 0x2 表示是否支持SRTP/UDP取流
         # bySupportStreamEncrypt & 0x4 表示是否支持SRTP/MULTICAST取流
-        ('byMarketType', c_byte),  # 0-无效（未知类型）,1-经销型，2-行业型
-        ('byRes2', c_byte * 238)  # 保留，置为0
+        ("byMarketType", c_byte),  # 0-无效（未知类型）,1-经销型，2-行业型
+        ("byRes2", c_byte * 238),  # 保留，置为0
     ]
 
 
@@ -776,7 +790,8 @@ class NET_DVR_USER_LOGIN_INFO(Structure):
         ("byHttps", c_byte),  # 0-不适用tls，1-使用tls 2-自适应
         ("iProxyID", c_uint32),  # 代理服务器序号，添加代理服务器信息时，相对应的服务器数组下表值
         ("byVerifyMode", c_byte),  # 认证方式，0-不认证，1-双向认证，2-单向认证；认证仅在使用TLS的时候生效;
-        ("byRes2", c_byte * 119)]
+        ("byRes2", c_byte * 119),
+    ]
 
 
 LPNET_DVR_USER_LOGIN_INFO = POINTER(NET_DVR_USER_LOGIN_INFO)
@@ -789,8 +804,8 @@ class NET_DVR_LOCAL_SDK_PATH(Structure):
 
 LPNET_DVR_LOCAL_SDK_PATH = POINTER(NET_DVR_LOCAL_SDK_PATH)
 NET_DVR_LOCAL_SDK_PATH._fields_ = [
-    ('sPath', c_char * 256),  # 组件库地址
-    ('byRes', c_byte * 128),
+    ("sPath", c_char * 256),  # 组件库地址
+    ("byRes", c_byte * 128),
 ]
 
 
@@ -801,24 +816,33 @@ class NET_DVR_PREVIEWINFO(Structure):
 
 LPNET_DVR_PREVIEWINFO = POINTER(NET_DVR_PREVIEWINFO)
 NET_DVR_PREVIEWINFO._fields_ = [
-    ('lChannel', c_uint32),  # 通道号
-    ('dwStreamType', c_uint32),  # 码流类型，0-主码流，1-子码流，2-码流3，3-码流4, 4-码流5,5-码流6,7-码流7,8-码流8,9-码流9,10-码流10
-    ('dwLinkMode', c_uint32),  # 0：TCP方式,1：UDP方式,2：多播方式,3 - RTP方式，4-RTP/RTSP,5-RSTP/HTTP ,6- HRUDP（可靠传输） ,7-RTSP/HTTPS
-    ('hPlayWnd', c_void_p),  # 播放窗口的句柄,为NULL表示不播放图象
-    ('bBlocked', c_uint32),  # 0-非阻塞取流, 1-阻塞取流, 如果阻塞SDK内部connect失败将会有5s的超时才能够返回,不适合于轮询取流操作
-    ('bPassbackRecord', c_uint32),  # 0-不启用录像回传,1启用录像回传
-    ('byPreviewMode', c_ubyte),  # 预览模式，0-正常预览，1-延迟预览
-    ('byStreamID', c_ubyte * 32),  # 流ID，lChannel为0xffffffff时启用此参数
-    ('byProtoType', c_ubyte),  # 应用层取流协议，0-私有协议，1-RTSP协议,
+    ("lChannel", c_uint32),  # 通道号
+    (
+        "dwStreamType",
+        c_uint32,
+    ),  # 码流类型，0-主码流，1-子码流，2-码流3，3-码流4, 4-码流5,5-码流6,7-码流7,8-码流8,9-码流9,10-码流10
+    (
+        "dwLinkMode",
+        c_uint32,
+    ),  # 0：TCP方式,1：UDP方式,2：多播方式,3 - RTP方式，4-RTP/RTSP,5-RSTP/HTTP ,6- HRUDP（可靠传输） ,7-RTSP/HTTPS
+    ("hPlayWnd", c_void_p),  # 播放窗口的句柄,为NULL表示不播放图象
+    (
+        "bBlocked",
+        c_uint32,
+    ),  # 0-非阻塞取流, 1-阻塞取流, 如果阻塞SDK内部connect失败将会有5s的超时才能够返回,不适合于轮询取流操作
+    ("bPassbackRecord", c_uint32),  # 0-不启用录像回传,1启用录像回传
+    ("byPreviewMode", c_ubyte),  # 预览模式，0-正常预览，1-延迟预览
+    ("byStreamID", c_ubyte * 32),  # 流ID，lChannel为0xffffffff时启用此参数
+    ("byProtoType", c_ubyte),  # 应用层取流协议，0-私有协议，1-RTSP协议,
     # 2-SRTP码流加密（对应此结构体中dwLinkMode 字段，支持如下方式, 为1，表示udp传输方式，信令走TLS加密，码流走SRTP加密，为2，表示多播传输方式，信令走TLS加密，码流走SRTP加密）
-    ('byRes1', c_ubyte),
-    ('byVideoCodingType', c_ubyte),  # 码流数据编解码类型 0-通用编码数据 1-热成像探测器产生的原始数据
-    ('dwDisplayBufNum', c_uint32),  # 播放库播放缓冲区最大缓冲帧数，范围1-50，置0时默认为1
-    ('byNPQMode', c_ubyte),  # NPQ是直连模式，还是过流媒体：0-直连 1-过流媒体
-    ('byRecvMetaData', c_ubyte),  # 是否接收metadata数据
+    ("byRes1", c_ubyte),
+    ("byVideoCodingType", c_ubyte),  # 码流数据编解码类型 0-通用编码数据 1-热成像探测器产生的原始数据
+    ("dwDisplayBufNum", c_uint32),  # 播放库播放缓冲区最大缓冲帧数，范围1-50，置0时默认为1
+    ("byNPQMode", c_ubyte),  # NPQ是直连模式，还是过流媒体：0-直连 1-过流媒体
+    ("byRecvMetaData", c_ubyte),  # 是否接收metadata数据
     # 设备是否支持该功能通过GET /ISAPI/System/capabilities 中DeviceCap.SysCap.isSupportMetadata是否存在且为true
-    ('byDataType', c_ubyte),  # 数据类型，0-码流数据，1-音频数据
-    ('byRes', c_ubyte * 213),
+    ("byDataType", c_ubyte),  # 数据类型，0-码流数据，1-音频数据
+    ("byRes", c_ubyte * 213),
 ]
 
 
@@ -829,8 +853,8 @@ class NET_DVR_JPEGPARA(Structure):
 
 LPNET_DVR_JPEGPARA = POINTER(NET_DVR_JPEGPARA)
 NET_DVR_JPEGPARA._fields_ = [
-    ('wPicSize', c_ushort),
-    ('wPicQuality', c_ushort),
+    ("wPicSize", c_ushort),
+    ("wPicQuality", c_ushort),
 ]
 
 
@@ -841,11 +865,11 @@ class NET_DVR_SHOWSTRINGINFO(Structure):
 
 LPNET_DVR_SHOWSTRINGINFO = POINTER(NET_DVR_SHOWSTRINGINFO)
 NET_DVR_SHOWSTRINGINFO._fields_ = [
-    ('wShowString', c_ushort),
-    ('wStringSize', c_ushort),
-    ('wShowStringTopLeftX', c_ushort),
-    ('wShowStringTopLeftY', c_ushort),
-    ('sString', c_ubyte * 44),
+    ("wShowString", c_ushort),
+    ("wStringSize", c_ushort),
+    ("wShowStringTopLeftX", c_ushort),
+    ("wShowStringTopLeftY", c_ushort),
+    ("sString", c_ubyte * 44),
 ]
 
 
@@ -856,8 +880,8 @@ class NET_DVR_SHOWSTRING_V30(Structure):
 
 LPNET_DVR_SHOWSTRING_V30 = POINTER(NET_DVR_SHOWSTRING_V30)
 NET_DVR_SHOWSTRING_V30._fields_ = [
-    ('dwSize', c_uint32),
-    ('struStringInfo', NET_DVR_SHOWSTRINGINFO * 8),
+    ("dwSize", c_uint32),
+    ("struStringInfo", NET_DVR_SHOWSTRINGINFO * 8),
 ]
 
 
@@ -868,13 +892,13 @@ class NET_DVR_XML_CONFIG_OUTPUT(Structure):
 
 LPNET_DVR_XML_CONFIG_OUTPUT = POINTER(NET_DVR_XML_CONFIG_OUTPUT)
 NET_DVR_XML_CONFIG_OUTPUT._fields_ = [
-    ('dwSize', c_uint32),
-    ('lpOutBuffer', c_void_p),
-    ('dwOutBufferSize', c_uint32),
-    ('dwReturnedXMLSize', c_uint32),
-    ('lpStatusBuffer', c_void_p),
-    ('dwStatusSize', c_uint32),
-    ('byRes', c_ubyte * 32)
+    ("dwSize", c_uint32),
+    ("lpOutBuffer", c_void_p),
+    ("dwOutBufferSize", c_uint32),
+    ("dwReturnedXMLSize", c_uint32),
+    ("lpStatusBuffer", c_void_p),
+    ("dwStatusSize", c_uint32),
+    ("byRes", c_ubyte * 32),
 ]
 
 
@@ -885,15 +909,15 @@ class NET_DVR_XML_CONFIG_INPUT(Structure):
 
 LPNET_DVR_XML_CONFIG_INPUT = POINTER(NET_DVR_XML_CONFIG_INPUT)
 NET_DVR_XML_CONFIG_INPUT._fields_ = [
-    ('dwSize', c_uint32),
-    ('lpRequestUrl', c_void_p),
-    ('dwRequestUrlLen', c_uint32),
-    ('lpInBuffer', c_void_p),
-    ('dwInBufferSize', c_uint32),
-    ('dwRecvTimeOut', c_uint32),
-    ('byForceEncrpt', c_ubyte),
-    ('byNumOfMultiPart', c_ubyte),
-    ('byRes', c_ubyte * 30)
+    ("dwSize", c_uint32),
+    ("lpRequestUrl", c_void_p),
+    ("dwRequestUrlLen", c_uint32),
+    ("lpInBuffer", c_void_p),
+    ("dwInBufferSize", c_uint32),
+    ("dwRecvTimeOut", c_uint32),
+    ("byForceEncrpt", c_ubyte),
+    ("byNumOfMultiPart", c_ubyte),
+    ("byRes", c_ubyte * 30),
 ]
 
 
@@ -917,7 +941,8 @@ class NET_DVR_ALARMER(Structure):
         ("sDeviceIP", c_byte * 128),  # IP地址
         ("sSocketIP", c_byte * 128),  # 报警主动上传时的socket IP地址
         ("byIpProtocol", c_byte),  # Ip协议 0-IPV4, 1-IPV6
-        ("byRes2", c_byte * 11)]
+        ("byRes2", c_byte * 11),
+    ]
 
 
 LPNET_DVR_ALARMER = POINTER(NET_DVR_ALARMER)
@@ -933,8 +958,14 @@ class NET_DVR_SETUPALARM_PARAM(Structure):
         ("byRetAlarmTypeV40", c_byte),
         # 0- 返回NET_DVR_ALARMINFO_V30或NET_DVR_ALARMINFO,
         # 1- 设备支持NET_DVR_ALARMINFO_V40则返回NET_DVR_ALARMINFO_V40，不支持则返回NET_DVR_ALARMINFO_V30或NET_DVR_ALARMINFO
-        ("byRetDevInfoVersion", c_byte),  # CVR上传报警信息回调结构体版本号 0-COMM_ALARM_DEVICE， 1-COMM_ALARM_DEVICE_V40
-        ("byRetVQDAlarmType", c_byte),  # VQD报警上传类型，0-上传报报警NET_DVR_VQD_DIAGNOSE_INFO，1-上传报警NET_DVR_VQD_ALARM
+        (
+            "byRetDevInfoVersion",
+            c_byte,
+        ),  # CVR上传报警信息回调结构体版本号 0-COMM_ALARM_DEVICE， 1-COMM_ALARM_DEVICE_V40
+        (
+            "byRetVQDAlarmType",
+            c_byte,
+        ),  # VQD报警上传类型，0-上传报报警NET_DVR_VQD_DIAGNOSE_INFO，1-上传报警NET_DVR_VQD_ALARM
         ("byFaceAlarmDetection", c_byte),
         ("bySupport", c_byte),
         ("byBrokenNetHttp", c_byte),
@@ -945,7 +976,8 @@ class NET_DVR_SETUPALARM_PARAM(Structure):
         ("byAlarmTypeURL", c_byte),
         # bit0-表示人脸抓拍报警上传
         # 0-表示二进制传输，1-表示URL传输（设备支持的情况下，设备支持能力根据具体报警能力集判断,同时设备需要支持URL的相关服务，当前是”云存储“）
-        ("byCustomCtrl", c_byte)]  # Bit0- 表示支持副驾驶人脸子图上传: 0-不上传,1-上传
+        ("byCustomCtrl", c_byte),
+    ]  # Bit0- 表示支持副驾驶人脸子图上传: 0-不上传,1-上传
 
 
 LPNET_DVR_SETUPALARM_PARAM = POINTER(NET_DVR_SETUPALARM_PARAM)
@@ -958,9 +990,16 @@ class NET_DVR_ALARMINFO_V30(Structure):
         ("dwAlarmInputNumber", c_uint32),  # 报警输入端口，当报警类型为0、23时有效
         ("byAlarmOutputNumber", c_byte * 96),
         # 触发的报警输出端口，值为1表示该报警端口输出，如byAlarmOutputNumber[0]=1表示触发第1个报警输出口输出，byAlarmOutputNumber[1]=1表示触发第2个报警输出口，依次类推
-        ("byAlarmRelateChannel", c_byte * 64),  # 触发的录像通道，值为1表示该通道录像，如byAlarmRelateChannel[0]=1表示触发第1个通道录像
-        ("byChannel", c_byte * 64),  # 发生报警的通道。当报警类型为2、3、6、9、10、11、13、15、16时有效，如byChannel[0]=1表示第1个通道报警
-        ("byDiskNumber", c_byte * 33)]  # 发生报警的硬盘。当报警类型为1，4，5时有效，byDiskNumber[0]=1表示1号硬盘异常
+        (
+            "byAlarmRelateChannel",
+            c_byte * 64,
+        ),  # 触发的录像通道，值为1表示该通道录像，如byAlarmRelateChannel[0]=1表示触发第1个通道录像
+        (
+            "byChannel",
+            c_byte * 64,
+        ),  # 发生报警的通道。当报警类型为2、3、6、9、10、11、13、15、16时有效，如byChannel[0]=1表示第1个通道报警
+        ("byDiskNumber", c_byte * 33),
+    ]  # 发生报警的硬盘。当报警类型为1，4，5时有效，byDiskNumber[0]=1表示1号硬盘异常
 
 
 LPNET_DVR_ALARMINFO_V30 = POINTER(NET_DVR_ALARMINFO_V30)
@@ -976,8 +1015,14 @@ class NET_DVR_SETUPALARM_PARAM(Structure):
         ("byRetAlarmTypeV40", c_byte),
         # 0- 返回NET_DVR_ALARMINFO_V30或NET_DVR_ALARMINFO,
         # 1- 设备支持NET_DVR_ALARMINFO_V40则返回NET_DVR_ALARMINFO_V40，不支持则返回NET_DVR_ALARMINFO_V30或NET_DVR_ALARMINFO
-        ("byRetDevInfoVersion", c_byte),  # CVR上传报警信息回调结构体版本号 0-COMM_ALARM_DEVICE， 1-COMM_ALARM_DEVICE_V40
-        ("byRetVQDAlarmType", c_byte),  # VQD报警上传类型，0-上传报报警NET_DVR_VQD_DIAGNOSE_INFO，1-上传报警NET_DVR_VQD_ALARM
+        (
+            "byRetDevInfoVersion",
+            c_byte,
+        ),  # CVR上传报警信息回调结构体版本号 0-COMM_ALARM_DEVICE， 1-COMM_ALARM_DEVICE_V40
+        (
+            "byRetVQDAlarmType",
+            c_byte,
+        ),  # VQD报警上传类型，0-上传报报警NET_DVR_VQD_DIAGNOSE_INFO，1-上传报警NET_DVR_VQD_ALARM
         ("byFaceAlarmDetection", c_byte),
         ("bySupport", c_byte),
         ("byBrokenNetHttp", c_byte),
@@ -988,7 +1033,8 @@ class NET_DVR_SETUPALARM_PARAM(Structure):
         ("byAlarmTypeURL", c_byte),
         # bit0-表示人脸抓拍报警上传
         # 0- 表示二进制传输，1- 表示URL传输（设备支持的情况下，设备支持能力根据具体报警能力集判断,同时设备需要支持URL的相关服务，当前是”云存储“）
-        ("byCustomCtrl", c_byte)]  # Bit0- 表示支持副驾驶人脸子图上传: 0-不上传,1-上传,(注：只在公司内部8600/8200等平台开放)
+        ("byCustomCtrl", c_byte),
+    ]  # Bit0- 表示支持副驾驶人脸子图上传: 0-不上传,1-上传,(注：只在公司内部8600/8200等平台开放)
 
 
 LPNET_DVR_SETUPALARM_PARAM = POINTER(NET_DVR_SETUPALARM_PARAM)
@@ -1002,7 +1048,8 @@ class NET_DVR_TIME(Structure):
         ("dwDay", c_uint32),  # 日
         ("dwHour", c_uint32),  # 时
         ("dwMinute", c_uint32),  # 分
-        ("dwSecond", c_uint32)]  # 秒
+        ("dwSecond", c_uint32),
+    ]  # 秒
 
 
 LPNET_DVR_TIME = POINTER(NET_DVR_TIME)
@@ -1012,7 +1059,8 @@ LPNET_DVR_TIME = POINTER(NET_DVR_TIME)
 class NET_DVR_IPADDR(Structure):
     _fields_ = [
         ("sIpV4", c_byte * 16),  # 设备IPv4地址
-        ("sIpV6", c_byte * 128)]  # 设备IPv6地址
+        ("sIpV6", c_byte * 128),
+    ]  # 设备IPv6地址
 
 
 LPNET_DVR_IPADDR = POINTER(NET_DVR_IPADDR)
@@ -1023,12 +1071,18 @@ class NET_DVR_ACS_EVENT_INFO(Structure):
     _fields_ = [
         ("dwSize", c_uint32),  # 结构体大小
         ("byCardNo", c_byte * 32),  # 卡号
-        ("byCardType", c_byte),  # 卡类型：1- 普通卡，3- 非授权名单卡，4- 巡更卡，5- 胁迫卡，6- 超级卡，7- 来宾卡，8- 解除卡，为0表示无效
+        (
+            "byCardType",
+            c_byte,
+        ),  # 卡类型：1- 普通卡，3- 非授权名单卡，4- 巡更卡，5- 胁迫卡，6- 超级卡，7- 来宾卡，8- 解除卡，为0表示无效
         ("byAllowListNo", c_byte),  # 授权名单单号，取值范围：1~8，0表示无效
         ("byReportChannel", c_byte),  # 报告上传通道：1- 布防上传，2- 中心组1上传，3- 中心组2上传，0表示无效
         ("byCardReaderKind", c_byte),  # 读卡器类型：0- 无效，1- IC读卡器，2- 身份证读卡器，3- 二维码读卡器，4- 指纹头
         ("dwCardReaderNo", c_uint32),  # 读卡器编号，为0表示无效
-        ("dwDoorNo", c_uint32),  # 门编号（或者梯控的楼层编号），为0表示无效（当接的设备为人员通道设备时，门1为进方向，门2为出方向）
+        (
+            "dwDoorNo",
+            c_uint32,
+        ),  # 门编号（或者梯控的楼层编号），为0表示无效（当接的设备为人员通道设备时，门1为进方向，门2为出方向）
         ("dwVerifyNo", c_uint32),  # 多重卡认证序号，为0表示无效
         ("dwAlarmInNo", c_uint32),  # 报警输入号，为0表示无效
         ("dwAlarmOutNo", c_uint32),  # 报警输出号，为0表示无效
@@ -1053,7 +1107,8 @@ class NET_DVR_ACS_EVENT_INFO(Structure):
         ("byChannelControllerIRAdaptorID", c_byte),  # 通道控制器红外转接板ID，为0无效（有效范围1-255）
         ("byChannelControllerIREmitterID", c_byte),  # 通道控制器红外对射ID，为0无效（有效范围1-255）
         ("byHelmet", c_byte),  # 可选，是否戴安全帽：0-保留，1-未知，2-不戴安全, 3-戴安全帽
-        ("byRes", c_byte * 3)]  # 保留，置为0
+        ("byRes", c_byte * 3),
+    ]  # 保留，置为0
 
 
 LPNET_DVR_ACS_EVENT_INFO = POINTER(NET_DVR_ACS_EVENT_INFO)
@@ -1071,7 +1126,10 @@ class NET_DVR_ACS_ALARM_INFO(Structure):
         ("struAcsEventInfo", NET_DVR_ACS_EVENT_INFO),  # 报警信息详细参数
         ("dwPicDataLen", c_uint32),  # 图片数据大小，不为0是表示后面带数据
         ("pPicData", c_void_p),  # 图片数据缓冲区
-        ("wInductiveEventType", c_uint16),  # 归纳事件类型，0-无效，客户端判断该值为非0值后，报警类型通过归纳事件类型区分，否则通过原有报警主次类型（dwMajor、dwMinor）区分
+        (
+            "wInductiveEventType",
+            c_uint16,
+        ),  # 归纳事件类型，0-无效，客户端判断该值为非0值后，报警类型通过归纳事件类型区分，否则通过原有报警主次类型（dwMajor、dwMinor）区分
         ("byPicTransType", c_byte),  # 图片数据传输方式: 0-二进制；1-url
         ("byRes1", c_byte),  # 保留，置为0
         ("dwIOTChannelNo", c_uint32),  # IOT通道号
@@ -1080,8 +1138,12 @@ class NET_DVR_ACS_ALARM_INFO(Structure):
         ("byTimeType", c_byte),  # 时间类型：0-设备本地时间，1-UTC时间（struTime的时间）
         ("byRes2", c_byte),  # 保留，置为0
         ("byAcsEventInfoExtendV20", c_byte),  # pAcsEventInfoExtendV20是否有效：0-无效，1-有效
-        ("pAcsEventInfoExtendV20", c_void_p),  # byAcsEventInfoExtendV20为1时，表示指向一个NET_DVR_ACS_EVENT_INFO_EXTEND_V20结构体
-        ("byRes", c_byte * 4)]  # 保留，置为0
+        (
+            "pAcsEventInfoExtendV20",
+            c_void_p,
+        ),  # byAcsEventInfoExtendV20为1时，表示指向一个NET_DVR_ACS_EVENT_INFO_EXTEND_V20结构体
+        ("byRes", c_byte * 4),
+    ]  # 保留，置为0
 
 
 LPNET_DVR_ACS_ALARM_INFO = POINTER(NET_DVR_ACS_ALARM_INFO)
@@ -1089,10 +1151,7 @@ LPNET_DVR_ACS_ALARM_INFO = POINTER(NET_DVR_ACS_ALARM_INFO)
 
 # 点坐标参数结构体
 class NET_VCA_POINT(Structure):
-    _fields_ = [
-        ("fX", c_float),
-        ("fY", c_float)
-    ]
+    _fields_ = [("fX", c_float), ("fY", c_float)]
 
 
 # 身份证刷卡信息扩展参数
@@ -1110,17 +1169,13 @@ class NET_DVR_ID_CARD_INFO_EXTEND(Structure):
         ("pQRCodeInfo", POINTER(c_byte)),
         ("pVisibleLightData", POINTER(c_byte)),
         ("pThermalData", POINTER(c_byte)),
-        ("byRes", c_ubyte * 1024)
+        ("byRes", c_ubyte * 1024),
     ]
 
 
 # 日期信息结构体
 class NET_DVR_DATE(Structure):
-    _fields_ = [
-        ('wYear', c_ushort),
-        ('byMonth', c_ubyte),
-        ('byDay', c_ubyte)
-    ]
+    _fields_ = [("wYear", c_ushort), ("byMonth", c_ubyte), ("byDay", c_ubyte)]
 
 
 # 身份证信息结构体
@@ -1137,7 +1192,7 @@ class NET_DVR_ID_CARD_INFO(Structure):
         ("byTermOfValidity", c_ubyte),
         ("bySex", c_ubyte),
         ("byNation", c_ubyte),
-        ("byRes", c_ubyte * 101)
+        ("byRes", c_ubyte * 101),
     ]
 
 
@@ -1149,31 +1204,29 @@ class NET_DVR_TIME(Structure):
         ("dwDay", c_uint32),
         ("dwHour", c_uint32),
         ("dwMinute", c_uint32),
-        ("dwSecond", c_uint32)
+        ("dwSecond", c_uint32),
     ]
 
 
 # 时间参数结构体
 class NET_DVR_TIME_V30(Structure):
     _fields_ = [
-        ('wYear', c_ushort),
-        ('byMonth', c_ubyte),
-        ('byDay', c_ubyte),
-        ('byHour', c_ubyte),
-        ('byMinute', c_ubyte),
-        ('bySecond', c_ubyte),
-        ('byISO8601', c_ubyte),
-        ('wMilliSec', c_ushort),
-        ('cTimeDifferenceH', c_ubyte),
-        ('cTimeDifferenceM', c_ubyte),
+        ("wYear", c_ushort),
+        ("byMonth", c_ubyte),
+        ("byDay", c_ubyte),
+        ("byHour", c_ubyte),
+        ("byMinute", c_ubyte),
+        ("bySecond", c_ubyte),
+        ("byISO8601", c_ubyte),
+        ("wMilliSec", c_ushort),
+        ("cTimeDifferenceH", c_ubyte),
+        ("cTimeDifferenceM", c_ubyte),
     ]
 
 
 # IP地址结构体
 class NET_DVR_IPADDR(Structure):
-    _fields_ = [
-        ("sIpV4", c_ubyte * 16),
-        ("byIPv6", c_ubyte * 128)]
+    _fields_ = [("sIpV4", c_ubyte * 16), ("byIPv6", c_ubyte * 128)]
 
 
 # 身份证刷卡信息上传结构体
@@ -1190,21 +1243,30 @@ class NET_DVR_ID_CARD_INFO_ALARM(Structure):
         ("dwDoorNo", c_uint32),  # 门编号，为0无效
         ("dwPicDataLen", c_uint32),  # 图片数据大小，不为0是表示后面带数据
         ("pPicData", c_void_p),  # 身份证图片数据缓冲区，dwPicDataLen不为0时缓冲区里面存放身份证头像的图片数据
-        ("byCardType", c_ubyte),  # 卡类型，1-普通卡，3-非授权名单卡，4-巡更卡，5-胁迫卡，6-超级卡，7-来宾卡，8-解除卡，为0无效
+        (
+            "byCardType",
+            c_ubyte,
+        ),  # 卡类型，1-普通卡，3-非授权名单卡，4-巡更卡，5-胁迫卡，6-超级卡，7-来宾卡，8-解除卡，为0无效
         ("byDeviceNo", c_ubyte),  # 设备编号，为0时无效（有效范围1-255）
         ("byMask", c_ubyte),  # 是否带口罩：0-保留，1-未知，2-不戴口罩，3-戴口罩
         ("byRes2", c_ubyte),  # 保留，置为0
         ("dwFingerPrintDataLen", c_uint32),  # 指纹数据大小，不为0是表示后面带数据
         ("pFingerPrintData", c_void_p),  # 指纹数据缓冲区，dwFingerPrintDataLen不为0时缓冲区里面存放指纹数据
         ("dwCapturePicDataLen", c_uint32),  # 抓拍图片数据大小，不为0是表示后面带数据
-        ("pCapturePicData", c_void_p),  # 抓拍图片数据缓冲区，dwCapturePicDataLen不为0时缓冲区里面存放设备上摄像机抓拍上传的图片数据
+        (
+            "pCapturePicData",
+            c_void_p,
+        ),  # 抓拍图片数据缓冲区，dwCapturePicDataLen不为0时缓冲区里面存放设备上摄像机抓拍上传的图片数据
         ("dwCertificatePicDataLen", c_uint32),  # 证件抓拍图片数据大小，不为0是表示后面带数据
-        ("pCertificatePicData", c_void_p),  # 证件抓拍图片数据缓冲区，dwCertificatePicDataLen不为0时缓冲区里面存放设备上摄像机抓拍上传的证件抓拍图片数据
+        (
+            "pCertificatePicData",
+            c_void_p,
+        ),  # 证件抓拍图片数据缓冲区，dwCertificatePicDataLen不为0时缓冲区里面存放设备上摄像机抓拍上传的证件抓拍图片数据
         ("byCardReaderKind", c_ubyte),  # 读卡器属于哪一类：0-无效，1-IC读卡器，2-身份证读卡器，3-二维码读卡器，4-指纹头
         ("byRes3", c_ubyte * 2),  # 保留，置为0
         ("byIDCardInfoExtend", c_ubyte),  # pIDCardInfoExtend是否有效：0-无效，1-有效
         ("pIDCardInfoExtend", POINTER(NET_DVR_ID_CARD_INFO_EXTEND)),  # 身份证刷卡扩展事件信息
-        ("byRes", c_ubyte * 172)  # 身份证刷卡扩展事件信息
+        ("byRes", c_ubyte * 172),  # 身份证刷卡扩展事件信息
     ]
 
 
@@ -1215,7 +1277,7 @@ class NET_DVR_ALARM_ISAPI_PICDATA(Structure):
     _fields_ = [
         ("dwPicLen", c_uint32),  # 图片数据长度
         ("byPicType", c_ubyte),  # 图片格式: 1- jpg
-        ("byRes", c_ubyte * 3),  #
+        ("byRes", c_ubyte * 3),
         ("szFilename", c_ubyte * 256),  # 图片名称
         ("pPicData", c_void_p),  # 图片数据
     ]
@@ -1244,7 +1306,10 @@ class NET_DVR_LOCAL_GENERAL_CFG(Structure):
         ("byExceptionCbDirectly", c_ubyte),  # 0-通过线程池异常回调，1-直接异常回调给上层
         ("byNotSplitRecordFile", c_ubyte),  # 回放和预览中保存到本地录像文件不切片 0-默认切片，1-不切片
         ("byResumeUpgradeEnable", c_ubyte),  # 断网续传升级使能，0-关闭（默认），1-开启
-        ("byAlarmJsonPictureSeparate", c_ubyte),  # 控制JSON透传报警数据和图片是否分离，0-不分离，1-分离（分离后走COMM_ISAPI_ALARM回调返回）
+        (
+            "byAlarmJsonPictureSeparate",
+            c_ubyte,
+        ),  # 控制JSON透传报警数据和图片是否分离，0-不分离，1-分离（分离后走COMM_ISAPI_ALARM回调返回）
         ("byRes", c_ubyte * 4),  # 保留
         ("i64FileSize", c_uint64),  # 单位：Byte
         ("dwResumeUpgradeTimeout", c_uint32),  # 断网续传重连超时时间，单位毫秒
@@ -1265,52 +1330,53 @@ class NET_DVR_LOCAL_TCP_PORT_BIND_CFG(Structure):
 
 
 class NET_DVR_DEVICECFG_V40(Structure):
-    _fields_ = [("dwSize", c_int),
-                ("sDVRName", c_byte * NAME_LEN),
-                ("dwDVRID", c_int),
-                ("dwRecycleRecord", c_int),
-                ("sSerialNumber", c_byte * SERIALNO_LEN),
-                ("dwSoftwareVersion", c_int),
-                ("dwSoftwareBuildDate", c_int),
-                ("dwDSPSoftwareVersion", c_int),
-                ("dwDSPSoftwareBuildDate", c_int),
-                ("dwPanelVersion", c_int),
-                ("dwHardwareVersion", c_int),
-                ("byAlarmInPortNum", c_byte),
-                ("byAlarmOutPortNum", c_byte),
-                ("byRS232Num", c_byte),
-                ("byRS485Num", c_byte),
-                ("byNetworkPortNum", c_byte),
-                ("byDiskCtrlNum", c_byte),
-                ("byDiskNum", c_byte),
-                ("byDVRType", c_byte),
-                ("byChanNum", c_byte),
-                ("byStartChan", c_byte),
-                ("byDecordChans", c_byte),
-                ("byVGANum", c_byte),
-                ("byUSBNum", c_byte),
-                ("byAuxoutNum", c_byte),
-                ("byAudioNum", c_byte),
-                ("byIPChanNum", c_byte),
-                ("byZeroChanNum", c_byte),
-                ("bySupport", c_byte),
-                ("byEsataUseage", c_byte),
-                ("byIPCPlug", c_byte),
-                ("byStorageMode", c_byte),
-                ("bySupport1", c_byte),
-                ("wDevType", c_ushort),
-                ("byDevTypeName", c_byte * DEV_TYPE_NAME_LEN),
-                ("bySupport2", c_byte),
-                ("byAnalogAlarmInPortNum", c_byte),
-                ("byStartAlarmInNo", c_byte),
-                ("byStartAlarmOutNo", c_byte),
-                ("byStartIPAlarmInNo", c_byte),
-                ("byStartIPAlarmOutNo", c_byte),
-                ("byHighIPChanNum", c_byte),
-                ("byEnableRemotePowerOn", c_byte),
-                ("wDevClass", c_short),
-                ("byRes2", c_byte * 6),
-                ]
+    _fields_ = [
+        ("dwSize", c_int),
+        ("sDVRName", c_byte * NAME_LEN),
+        ("dwDVRID", c_int),
+        ("dwRecycleRecord", c_int),
+        ("sSerialNumber", c_byte * SERIALNO_LEN),
+        ("dwSoftwareVersion", c_int),
+        ("dwSoftwareBuildDate", c_int),
+        ("dwDSPSoftwareVersion", c_int),
+        ("dwDSPSoftwareBuildDate", c_int),
+        ("dwPanelVersion", c_int),
+        ("dwHardwareVersion", c_int),
+        ("byAlarmInPortNum", c_byte),
+        ("byAlarmOutPortNum", c_byte),
+        ("byRS232Num", c_byte),
+        ("byRS485Num", c_byte),
+        ("byNetworkPortNum", c_byte),
+        ("byDiskCtrlNum", c_byte),
+        ("byDiskNum", c_byte),
+        ("byDVRType", c_byte),
+        ("byChanNum", c_byte),
+        ("byStartChan", c_byte),
+        ("byDecordChans", c_byte),
+        ("byVGANum", c_byte),
+        ("byUSBNum", c_byte),
+        ("byAuxoutNum", c_byte),
+        ("byAudioNum", c_byte),
+        ("byIPChanNum", c_byte),
+        ("byZeroChanNum", c_byte),
+        ("bySupport", c_byte),
+        ("byEsataUseage", c_byte),
+        ("byIPCPlug", c_byte),
+        ("byStorageMode", c_byte),
+        ("bySupport1", c_byte),
+        ("wDevType", c_ushort),
+        ("byDevTypeName", c_byte * DEV_TYPE_NAME_LEN),
+        ("bySupport2", c_byte),
+        ("byAnalogAlarmInPortNum", c_byte),
+        ("byStartAlarmInNo", c_byte),
+        ("byStartAlarmOutNo", c_byte),
+        ("byStartIPAlarmInNo", c_byte),
+        ("byStartIPAlarmOutNo", c_byte),
+        ("byHighIPChanNum", c_byte),
+        ("byEnableRemotePowerOn", c_byte),
+        ("wDevClass", c_short),
+        ("byRes2", c_byte * 6),
+    ]
 
 
 LPNET_DVR_LOCAL_GENERAL_CFG = POINTER(NET_DVR_LOCAL_GENERAL_CFG)
@@ -1337,7 +1403,7 @@ class NET_DVR_SCHEDTIME(Structure):
 class NET_DVR_VICOLOR(Structure):
     _fields_ = [
         ("struColor", NET_DVR_COLOR * MAX_TIMESEGMENT_V30),  # 图像参数(第一个有效，其他三个保留)
-        ("struHandleTime", NET_DVR_SCHEDTIME * MAX_TIMESEGMENT_V30)  # 处理时间段(保留)
+        ("struHandleTime", NET_DVR_SCHEDTIME * MAX_TIMESEGMENT_V30),  # 处理时间段(保留)
     ]
 
 
@@ -1374,15 +1440,18 @@ class NET_DVR_VILOST_V40(Structure):
         ("dwRelAlarmOut", c_int32 * MAX_ALARMOUT_V40),
         ("struAlarmTime", NET_DVR_SCHEDTIMEWEEK * MAX_DAYS),
         ("byVILostAlarmThreshold", c_byte),
-        ("byRes", c_byte * 63)
+        ("byRes", c_byte * 63),
     ]
 
 
 class NET_DVR_MOTION_SINGLE_AREA(Structure):
     _fields_ = [
-        ("byMotionScope", c_byte * (64 * 96)),  # 侦测区域，0-96位，表示64行，共有96*64个小宏块，目前有效的是22*18，为1表示是移动侦测区域，0-表示不是
+        (
+            "byMotionScope",
+            c_byte * (64 * 96),
+        ),  # 侦测区域，0-96位，表示64行，共有96*64个小宏块，目前有效的是22*18，为1表示是移动侦测区域，0-表示不是
         ("byMotionSensitive", c_byte),  # 移动侦测灵敏度，0 - 5，越高越灵敏，0xff关闭
-        ("byRes", c_byte * 3)  # 保留字段
+        ("byRes", c_byte * 3),  # 保留字段
     ]
 
 
@@ -1393,31 +1462,26 @@ class NET_DVR_DAYTIME(Structure):
         ("bySecond", c_byte),  # 0~60
         ("byRes", c_byte),
         ("wMilliSecond", c_uint16),  # 0~1000
-        ("byRes1", c_byte * 2)
+        ("byRes1", c_byte * 2),
     ]
 
 
 class NET_DVR_SCHEDULE_DAYTIME(Structure):
     _fields_ = [
         ("struStartTime", NET_DVR_DAYTIME),  # 开始时间
-        ("struStopTime", NET_DVR_DAYTIME)  # 结束时间
+        ("struStopTime", NET_DVR_DAYTIME),  # 结束时间
     ]
 
 
 class NET_VCA_RECT(Structure):
-    _fields_ = [
-        ("fX", c_float),
-        ("fY", c_float),
-        ("fWidth", c_float),
-        ("fHeight", c_float)
-    ]
+    _fields_ = [("fX", c_float), ("fY", c_float), ("fWidth", c_float), ("fHeight", c_float)]
 
 
 class NET_DVR_DNMODE(Structure):
     _fields_ = [
         ("byObjectSize", c_byte),  # 占比参数(0~100)
         ("byMotionSensitive", c_byte),  # 移动侦测灵敏度, 0 - 5,越高越灵敏,0xff关闭
-        ("byRes", c_byte * 6)
+        ("byRes", c_byte * 6),
     ]
 
 
@@ -1429,7 +1493,7 @@ class NET_DVR_MOTION_MULTI_AREAPARAM(Structure):
         ("struDayNightDisable", NET_DVR_DNMODE),  # 关闭模式
         ("struDayModeParam", NET_DVR_DNMODE),  # 白天模式
         ("struNightModeParam", NET_DVR_DNMODE),  # 夜晚模式
-        ("byRes1", c_byte * 8)
+        ("byRes1", c_byte * 8),
     ]
 
 
@@ -1443,7 +1507,7 @@ class NET_DVR_MOTION_MULTI_AREA(Structure):
         ("byRes", c_byte * 2),  # 保留字段
         ("struScheduleTime", NET_DVR_SCHEDULE_DAYTIME),  # 切换时间
         ("struMotionMultiAreaParam", NET_DVR_MOTION_MULTI_AREAPARAM * MAX_MULTI_AREA_NUM),  # 最大支持24个区域
-        ("byRes1", c_byte * 60)
+        ("byRes1", c_byte * 60),
     ]
 
 
@@ -1468,7 +1532,7 @@ class NET_DVR_MOTION_V40(Structure):
         ("dwMaxRecordChanNum", c_uint32),  # 设备支持的最大关联录像通道数-只读
         ("dwRelRecordChan", c_uint32 * MAX_CHANNUM_V40),  # 实际触发录像通道
         ("byDiscardFalseAlarm", c_byte),  # 启用去误报 0-无效，1-不启用，2-启用
-        ("byRes", c_byte * 127)  # 保留字节
+        ("byRes", c_byte * 127),  # 保留字节
     ]
 
 
@@ -1484,7 +1548,7 @@ class NET_DVR_HIDEALARM_V40(Structure):
         ("dwRelAlarmOut", c_int32 * MAX_ALARMOUT_V40),
         # 触发报警输出号，按值表示,采用紧凑型排列，从下标0 - dwRelAlarmOut -1有效，如果中间遇到0xffffffff,则后续无效
         ("struAlarmTime", NET_DVR_SCHEDTIMEWEEK * MAX_DAYS),  # 布防时间
-        ("byRes", c_byte * 64)  # 保留
+        ("byRes", c_byte * 64),  # 保留
     ]
 
 
@@ -1493,7 +1557,7 @@ class NET_DVR_RGB_COLOR(Structure):
         ("byRed", c_byte),  # RGB颜色三分量中的红色
         ("byGreen", c_byte),  # RGB颜色三分量中的绿色
         ("byBlue", c_byte),  # RGB颜色三分量中的蓝色
-        ("byRes", c_byte)  # 保留
+        ("byRes", c_byte),  # 保留
     ]
 
 
@@ -1524,7 +1588,10 @@ class NET_DVR_PICCFG_V40(Structure):
         ("struMotion", NET_DVR_MOTION_V40),  # 移动侦测报警（支持组）
         ("struHideAlarm", NET_DVR_HIDEALARM_V40),  # 遮挡报警（支持组）
         ("struOsdColor", NET_DVR_RGB_COLOR),  # OSD颜色
-        ("dwBoundary", c_uint32),  # 边界值，左对齐，右对齐以及国标模式的边界值，0-表示默认值，单位：像素;在国标模式下，单位修改为字符个数（范围是，0,1,2）
+        (
+            "dwBoundary",
+            c_uint32,
+        ),  # 边界值，左对齐，右对齐以及国标模式的边界值，0-表示默认值，单位：像素;在国标模式下，单位修改为字符个数（范围是，0,1,2）
         ("struOsdBkColor", NET_DVR_RGB_COLOR),  # 自定义OSD背景色
         ("byOSDBkColorMode", c_byte),  # OSD背景色模式，0-默认，1-自定义OSD背景色
         ("byUpDownBoundary", c_byte),
@@ -1534,7 +1601,7 @@ class NET_DVR_PICCFG_V40(Structure):
         ("byAngleEnabled", c_byte),  # OSD是否叠加俯仰角信息.0-不叠加,1-叠加
         ("wTiltAngleTopLeftX", c_uint16),  # 俯仰角信息显示位置的x坐标
         ("wTiltAngleTopLeftY", c_uint16),  # 俯仰角信息显示位置的y坐标
-        ("byRes", c_byte * 108)
+        ("byRes", c_byte * 108),
     ]
 
 
@@ -1571,15 +1638,12 @@ class NET_DVR_USER_INFO_V30(Structure):
         # 优先级，0xff-无，0--低，1--中，2--高
         ("byPriority", c_byte),
         # 保留
-        ("byRes", ctypes.c_byte * 17)
+        ("byRes", ctypes.c_byte * 17),
     ]
 
 
 class NET_DVR_USER_V30(Structure):
-    _fields_ = [
-        ("dwSize", c_uint32),
-        ("struUser", NET_DVR_USER_INFO_V30 * MAX_USERNUM_V30)
-    ]
+    _fields_ = [("dwSize", c_uint32), ("struUser", NET_DVR_USER_INFO_V30 * MAX_USERNUM_V30)]
 
 
 class NET_DVR_FLOW_TEST_PARAM(Structure):
@@ -1587,7 +1651,7 @@ class NET_DVR_FLOW_TEST_PARAM(Structure):
         ("dwSize", c_uint32),  # 结构大小
         ("lCardIndex", c_uint32),  # 网卡索引
         ("dwInterval", c_uint32),  # 设备上传流量时间间隔, 单位:100ms
-        ("byRes", c_byte * 8)  # 保留字节
+        ("byRes", c_byte * 8),  # 保留字节
     ]
 
 
@@ -1596,7 +1660,7 @@ class NET_DVR_FLOW_INFO(ctypes.Structure):
         ("dwSize", c_uint32),  # 结构大小
         ("dwSendFlowSize", c_uint32),  # 发送流量大小, 单位kbps
         ("dwRecvFlowSize", c_uint32),  # 接收流量大小, 单位kbps
-        ("byRes", c_byte * 20)  # 保留
+        ("byRes", c_byte * 20),  # 保留
     ]
 
 
@@ -1604,7 +1668,7 @@ class NET_DVR_RECORD_TIME_SPAN_INQUIRY(Structure):
     _fields_ = [
         ("dwSize", c_uint32),  # 结构体大小
         ("byType", c_byte),  # 0 正常音视频录像, 1图片通道录像, 2ANR通道录像, 3抽帧通道录像
-        ("byRes", c_byte * 63)  # 保留字节
+        ("byRes", c_byte * 63),  # 保留字节
     ]
 
 
@@ -1614,7 +1678,7 @@ class NET_DVR_RECORD_TIME_SPAN(Structure):
         ("strBeginTime", NET_DVR_TIME),  # 开始时间
         ("strEndTime", NET_DVR_TIME),  # 结束时间
         ("byType", c_byte),  # 录像类型
-        ("byRes", c_byte * 35)  # 保留
+        ("byRes", c_byte * 35),  # 保留
     ]
 
 
@@ -1623,7 +1687,7 @@ class NET_DVR_STREAM_INFO(Structure):
         ("dwSize", c_uint32),  # 结构体大小
         ("byID", c_byte * 32),  # ID数组
         ("dwChannel", c_uint32),  # 通道号
-        ("byRes", c_byte * 32)  # 保留
+        ("byRes", c_byte * 32),  # 保留
     ]
 
 
@@ -1636,7 +1700,7 @@ class NET_DVR_MRD_SEARCH_PARAM(Structure):
         ("byDrawFrame", c_byte),  # 0-不抽帧 1-抽帧
         ("byStreamType", c_byte),  # 0-主码流 1-子码流
         ("byLocalOrUTC", c_byte),  # 0-设备本地时区  1-UTC
-        ("byRes", c_byte * 30)  # 保留
+        ("byRes", c_byte * 30),  # 保留
     ]
 
 
@@ -1647,7 +1711,7 @@ class NET_DVR_MRD_SEARCH_RESULT(Structure):
         ("byRecordDistribution", c_byte * 32),
         # 录像分布，byRecordDistribution[0]=1表示1日存在录像，byRecordDistribution[0]=0表示没有录像，byRecordDistribution[1]表示2日，以此类推
         ("byHasEventRecode", c_byte * 31),  # 事件录像 0-无事件录像，1-有事件录像
-        ("byRes", c_byte)  # 保留
+        ("byRes", c_byte),  # 保留
     ]
 
 
@@ -1662,9 +1726,15 @@ class NET_DVR_STD_CONFIG(Structure):
         ("lpStatusBuffer", c_void_p),  # [out]返回的状态参数(XML格式),获取成功时不会赋值,如果不需要,可以置NULL
         ("dwStatusSize", c_uint32),  # [in] lpStatusBuffer指向的内存大小
         ("lpXmlBuffer", c_void_p),  # [in/out]byDataType = 1时有效,xml格式数据
-        ("dwXmlSize", c_uint32),  # [in/out]lpXmlBuffer指向的内存大小,获取时同时作为输入和输出参数，获取成功后会修改为实际长度，设置时表示实际长度，而不是整个内存大小
-        ("byDataType", c_byte),  # [in]输入/输出参数类型,0-使用结构体类型lpInBuffer/lpOutBuffer有效,1-使用XML类型lpXmlBuffer有效
-        ("byRes", c_byte * 23)  # 保留
+        (
+            "dwXmlSize",
+            c_uint32,
+        ),  # [in/out]lpXmlBuffer指向的内存大小,获取时同时作为输入和输出参数，获取成功后会修改为实际长度，设置时表示实际长度，而不是整个内存大小
+        (
+            "byDataType",
+            c_byte,
+        ),  # [in]输入/输出参数类型,0-使用结构体类型lpInBuffer/lpOutBuffer有效,1-使用XML类型lpXmlBuffer有效
+        ("byRes", c_byte * 23),  # 保留
     ]
 
 
@@ -1673,7 +1743,7 @@ class NET_DVR_LLI_PARAM(Structure):
         ("fSec", c_float),  # 秒[0.000000,60.000000]
         ("byDegree", c_byte),  # 度:纬度[0,90] 经度[0,180]
         ("byMinute", c_byte),  # 分[0,59]
-        ("byRes", c_byte * 6)  # 保留
+        ("byRes", c_byte * 6),  # 保留
     ]
 
 
@@ -1682,7 +1752,7 @@ class NET_DVR_PTZPOS_PARAM(Structure):
         ("fPanPos", c_float),  # 水平参数，精确到小数点后1位
         ("fTiltPos", c_float),  # 垂直参数，精确到小数点后1位
         ("fZoomPos", c_float),  # 变倍参数，精确到小数点后1位
-        ("byRes", c_byte * 16)  # 保留
+        ("byRes", c_byte * 16),  # 保留
     ]
 
 
@@ -1692,7 +1762,7 @@ class NET_DVR_SENSOR_PARAM(Structure):
         ("byRes", c_byte * 31),  # 保留
         ("fHorWidth", c_float),  # 水平宽度，精确到小数点后两位 *10000
         ("fVerWidth", c_float),  # 垂直宽度，精确到小数点后两位 *10000
-        ("fFold", c_float)  # zoom=1没变时的焦距，精确到小数点后两位 *100
+        ("fFold", c_float),  # zoom=1没变时的焦距，精确到小数点后两位 *100
     ]
 
 
@@ -1702,7 +1772,7 @@ class NET_PTZ_INFO(Structure):
         ("fTilt", c_float),  # 垂直参数
         ("fZoom", c_float),  # 变焦参数
         ("dwFocus", c_uint32),  # 聚焦参数，聚焦范围：归一化0-100000
-        ("byRes", c_byte * 4)  # 保留
+        ("byRes", c_byte * 4),  # 保留
     ]
 
 
@@ -1731,7 +1801,7 @@ class NET_DVR_GIS_INFO(Structure):
         ("fMaxHorizontalValue", c_float),  # 最大水平值
         ("fMinVerticalValue", c_float),  # 最小垂直值
         ("fMaxVerticalValue", c_float),  # 最大垂直值
-        ("byRes", c_byte * 220)  # 保留
+        ("byRes", c_byte * 220),  # 保留
     ]
 
 
@@ -1740,7 +1810,7 @@ class NET_DVR_PTZPOS(Structure):
         ("wAction", c_uint16),  # 获取时该字段无效
         ("wPanPos", c_uint16),  # 水平参数
         ("wTiltPos", c_uint16),  # 垂直参数
-        ("wZoomPos", c_uint16)  # 变倍参数
+        ("wZoomPos", c_uint16),  # 变倍参数
     ]
 
 
@@ -1749,7 +1819,7 @@ class NET_DVR_PTZ_LOCKCFG(Structure):
     _fields_ = [
         ("dwSize", c_uint32),  # 结构体大小
         ("byWorkMode", c_byte),  # 云台锁定控制：0- 解锁，1- 锁定
-        ("byRes", c_byte * 123)  # 保留未使用的字段
+        ("byRes", c_byte * 123),  # 保留未使用的字段
     ]
 
 
@@ -1762,7 +1832,7 @@ class NET_DVR_VIDEOEFFECT(Structure):
         ("byHueLevel", c_byte),  # 色调级别 [0-100,（保留）]
         ("byEnableFunc", c_byte),  # 使能，按位表示，bit0-SMART IR(防过曝)，bit1-低照度,bit2-强光抑制使能，0-否，1-是
         ("byLightInhibitLevel", c_byte),  # 强光抑制等级，[1-3]表示等级
-        ("byGrayLevel", c_byte)  # 灰度值域，0-[0-255]，1-[16-235]
+        ("byGrayLevel", c_byte),  # 灰度值域，0-[0-255]，1-[16-235]
     ]
 
 
@@ -1771,7 +1841,7 @@ class NET_DVR_GAIN(Structure):
         ("byGainLevel", c_byte),  # 增益级别 [0-100]
         ("byGainUserSet", c_byte),  # 用户自定义增益 [0-100]，对于抓拍机，是CCD模式下的抓拍增益
         ("byRes", c_byte * 2),  # 保留字段
-        ("dwMaxGainValue", c_uint32)  # 最大增益值，单位dB
+        ("dwMaxGainValue", c_uint32),  # 最大增益值，单位dB
     ]
 
 
@@ -1785,7 +1855,7 @@ class NET_DVR_WHITEBALANCE(Structure):
         # 15-暖光灯(Warm Light Lamp), 16-自然光(Natural Light)
         ("byWhiteBalanceModeRGain", c_byte),  # 手动白平衡时有效，手动白平衡 R增益
         ("byWhiteBalanceModeBGain", c_byte),  # 手动白平衡时有效，手动白平衡 B增益
-        ("byRes", c_byte * 5)  # 保留字段
+        ("byRes", c_byte * 5),  # 保留字段
     ]
 
 
@@ -1794,9 +1864,12 @@ class NET_DVR_EXPOSURE(Structure):
         ("byExposureMode", c_byte),  # 0 手动曝光, 1 自动曝光
         ("byAutoApertureLevel", c_byte),  # 自动光圈灵敏度, 0-10
         ("byRes", c_byte * 2),  # 保留字段
-        ("dwVideoExposureSet", c_uint32),  # 自定义视频曝光时间（单位us）注:自动曝光时该值为曝光最慢值 新增20-1s(1000000us)
+        (
+            "dwVideoExposureSet",
+            c_uint32,
+        ),  # 自定义视频曝光时间（单位us）注:自动曝光时该值为曝光最慢值 新增20-1s(1000000us)
         ("dwExposureUserSet", c_uint32),  # 自定义曝光时间, 在抓拍机上应用时，CCD模式时是抓拍快门速度
-        ("dwRes", c_uint32)  # 保留字段
+        ("dwRes", c_uint32),  # 保留字段
     ]
 
 
@@ -1804,7 +1877,7 @@ class NET_DVR_GAMMACORRECT(Structure):
     _fields_ = [
         ("byGammaCorrectionEnabled", c_byte),  # 0 dsibale  1 enable
         ("byGammaCorrectionLevel", c_byte),  # 0-100
-        ("byRes", c_byte * 6)  # 保留字段
+        ("byRes", c_byte * 6),  # 保留字段
     ]
 
 
@@ -1814,13 +1887,16 @@ class NET_DVR_WDR(Structure):
         ("byWDRLevel1", c_byte),  # 0-F
         ("byWDRLevel2", c_byte),  # 0-F
         ("byWDRContrastLevel", c_byte),  # 0-100
-        ("byRes", c_byte * 16)  # 保留字段
+        ("byRes", c_byte * 16),  # 保留字段
     ]
 
 
 class NET_DVR_DAYNIGHT(Structure):
     _fields_ = [
-        ("byDayNightFilterType", c_byte),  # 日夜切换：0-白天，1-夜晚，2-自动，3-定时，4-报警输入触发, 5-自动模式2（无光敏）,6-黑光，7-黑光自动，8-黑光定时
+        (
+            "byDayNightFilterType",
+            c_byte,
+        ),  # 日夜切换：0-白天，1-夜晚，2-自动，3-定时，4-报警输入触发, 5-自动模式2（无光敏）,6-黑光，7-黑光自动，8-黑光定时
         ("bySwitchScheduleEnabled", c_byte),  # 0 dsibale  1 enable,(保留)
         # 定时模式参数
         ("byBeginTime", c_byte),  # 开始时间（小时），0-23
@@ -1835,20 +1911,23 @@ class NET_DVR_DAYNIGHT(Structure):
         ("byEndTimeMin", c_byte),  # 结束时间（分），0-59
         ("byEndTimeSec", c_byte),  # 结束时间（秒），0-59
         # 报警输入触发模式参数
-        ("byAlarmTrigState", c_byte)  # 报警输入触发状态，0-白天，1-夜晚
+        ("byAlarmTrigState", c_byte),  # 报警输入触发状态，0-白天，1-夜晚
     ]
 
 
 class NET_DVR_BACKLIGHT(Structure):
     _fields_ = [
-        ("byBacklightMode", c_byte),  # 背光补偿:0 off 1 UP、2 DOWN、3 LEFT、4 RIGHT、5MIDDLE、6自定义，10-开，11-自动，12-多区域背光补偿
+        (
+            "byBacklightMode",
+            c_byte,
+        ),  # 背光补偿:0 off 1 UP、2 DOWN、3 LEFT、4 RIGHT、5MIDDLE、6自定义，10-开，11-自动，12-多区域背光补偿
         ("byBacklightLevel", c_byte),  # 0x0-0xF
         ("byRes1", c_byte * 2),
         ("dwPositionX1", c_uint32),  # （X坐标1）
         ("dwPositionY1", c_uint32),  # （Y坐标1）
         ("dwPositionX2", c_uint32),  # （X坐标2）
         ("dwPositionY2", c_uint32),  # （Y坐标2）
-        ("byRes2", c_byte * 4)
+        ("byRes2", c_byte * 4),
     ]
 
 
@@ -1860,7 +1939,7 @@ class NET_DVR_NOISEREMOVE(Structure):
         ("byTemporalLevel", c_byte),  # 专家模式下时域强度：0-100
         ("byDigitalNoiseRemove2DEnable", c_byte),  # 抓拍帧2D降噪，0-不启用，1-启用
         ("byDigitalNoiseRemove2DLevel", c_byte),  # 抓拍帧2D降噪级别，0-100
-        ("byRes", c_byte * 2)  # 保留字节
+        ("byRes", c_byte * 2),  # 保留字节
     ]
 
 
@@ -1872,7 +1951,7 @@ class NET_DVR_CMOSMODECFG(Structure):
         ("byCaptureGain2", c_byte),  # 抓拍增益2, 0-100
         ("dwCaptureShutterSpeed1", c_uint32),  # 抓拍快门速度1
         ("dwCaptureShutterSpeed2", c_uint32),  # 抓拍快门速度2
-        ("byRes", c_byte * 4)  # 保留字节
+        ("byRes", c_byte * 4),  # 保留字节
     ]
 
 
@@ -1880,7 +1959,7 @@ class NET_DVR_DEFOGCFG(Structure):
     _fields_ = [
         ("byMode", c_byte),  # 模式，0-不启用，1-自动模式，2-常开模式
         ("byLevel", c_byte),  # 等级，0-100
-        ("byRes", c_byte * 6)  # 保留字节
+        ("byRes", c_byte * 6),  # 保留字节
     ]
 
 
@@ -1888,14 +1967,14 @@ class NET_DVR_ELECTRONICSTABILIZATION(Structure):
     _fields_ = [
         ("byEnable", c_byte),  # 使能 0- 不启用，1- 启用
         ("byLevel", c_byte),  # 等级，0-100
-        ("byRes", c_byte * 6)  # 保留字节
+        ("byRes", c_byte * 6),  # 保留字节
     ]
 
 
 class NET_DVR_CORRIDOR_MODE_CCD(Structure):
     _fields_ = [
         ("byEnableCorridorMode", c_byte),  # 是否启用走廊模式 0～不启用， 1～启用
-        ("byRes", c_byte * 11)  # 保留字节
+        ("byRes", c_byte * 11),  # 保留字节
     ]
 
 
@@ -1904,7 +1983,7 @@ class NET_DVR_SMARTIR_PARAM(Structure):
         ("byMode", c_byte),  # 0～手动，1～自动
         ("byIRDistance", c_byte),  # 红外距离等级(等级，距离正比例)level:1~100 默认:50（手动模式下增加）
         ("byShortIRDistance", c_byte),  # 近光灯距离等级(1~100)
-        ("byLongIRDistance", c_byte)  # 远光灯距离等级(1~100)
+        ("byLongIRDistance", c_byte),  # 远光灯距离等级(1~100)
     ]
 
 
@@ -1912,7 +1991,7 @@ class NET_DVR_PIRIS_PARAM(Structure):
     _fields_ = [
         ("byMode", c_byte),  # 0-自动，1-手动
         ("byPIrisAperture", c_byte),  # 红外光圈大小等级(等级,光圈大小正比例)level:1~100 默认:50（手动模式下增加）
-        ("byRes", c_byte * 6)  # 保留字段
+        ("byRes", c_byte * 6),  # 保留字段
     ]
 
 
@@ -1922,12 +2001,15 @@ class NET_DVR_LASER_PARAM_CFG(Structure):
         ("bySensitivity", c_byte),  # 激光灯灵敏度 0-100 默认50
         ("byTriggerMode", c_byte),  # 激光灯触发模式 0-无效，1-机芯触发，2-光敏触发 默认机芯触发
         ("byBrightness", c_byte),  # 控制模式为手动模式下有效；激光灯亮度 0-255 默认100
-        ("byAngle", c_byte),  # 激光灯角度 0-无效，范围1-36 默认12，激光灯照射范围为一个圆圈，调节激光角度是调节这个圆的半径的大小
+        (
+            "byAngle",
+            c_byte,
+        ),  # 激光灯角度 0-无效，范围1-36 默认12，激光灯照射范围为一个圆圈，调节激光角度是调节这个圆的半径的大小
         ("byLimitBrightness", c_byte),  # 控制模式为自动模式下有效；激光灯亮度限制 0~100 （新增）2014-01-26
         ("byEnabled", c_byte),  # 手动控制激光灯使能 0-关闭，1-启动
         ("byIllumination", c_byte),  # 激光灯强度配置0~100
         ("byLightAngle", c_byte),  # 补光角度 0~100
-        ("byRes", c_byte * 7)  # 保留字段
+        ("byRes", c_byte * 7),  # 保留字段
     ]
 
 
@@ -1936,7 +2018,7 @@ class NET_DVR_FFC_PARAM(Structure):
         ("byMode", c_byte),  # 1-Schedule Mode, 2-Temperature Mode, 3-Off
         ("byRes1", c_byte),  # 时间:按能力显示，单位分钟，选项有10,20,30,40,50,60,120,180,240
         ("wCompensateTime", c_uint16),  # 定时模式下生效
-        ("byRes2", c_byte * 4)  # 保留字段
+        ("byRes2", c_byte * 4),  # 保留字段
     ]
 
 
@@ -1945,7 +2027,7 @@ class NET_DVR_DDE_PARAM(Structure):
         ("byMode", c_byte),  # 1-Off, 2-Normal Mode, 3-Expert Mode
         ("byNormalLevel", c_byte),  # 普通模式等级范围[1,100]，普通模式下生效
         ("byExpertLevel", c_byte),  # 专家模式等级范围[1,100]，专家模式下生效
-        ("byRes", c_byte * 5)  # 保留字段
+        ("byRes", c_byte * 5),  # 保留字段
     ]
 
 
@@ -1954,7 +2036,7 @@ class NET_DVR_AGC_PARAM(Structure):
         ("bySceneType", c_byte),  # 1-Normal Sence, 2-Highlight Sence, 3-Manual Sence
         ("byLightLevel", c_byte),  # 亮度等级[1,100]；手动模式下生效
         ("byGainLevel", c_byte),  # 增益等级[1,100]；手动模式下生效
-        ("byRes", c_byte * 5)  # 保留字段
+        ("byRes", c_byte * 5),  # 保留字段
     ]
 
 
@@ -1966,7 +2048,7 @@ class NET_DVR_TIME_EX(Structure):
         ("byHour", c_byte),
         ("byMinute", c_byte),
         ("bySecond", c_byte),
-        ("byRes", c_byte)
+        ("byRes", c_byte),
     ]
 
 
@@ -2004,14 +2086,14 @@ class NET_DVR_SNAP_CAMERAPARAMCFG(Structure):
         ("byPlateContrastLevel", c_byte),  # 车牌对比度等级，0~100，默认0
         # 车牌饱和度
         ("byPlateSaturationLevel", c_byte),  # 车牌饱和度等级，0~100，默认0
-        ("byRes", c_byte * 9)  # 保留字段
+        ("byRes", c_byte * 9),  # 保留字段
     ]
 
 
 class NET_DVR_OPTICAL_DEHAZE(Structure):
     _fields_ = [
         ("byEnable", c_byte),  # 0~不启用光学透雾，1~启用光学透雾
-        ("byRes", c_byte * 7)
+        ("byRes", c_byte * 7),
     ]
 
 
@@ -2021,14 +2103,13 @@ class NET_DVR_THERMOMETRY_AGC(Structure):
         ("byRes1", c_byte * 3),
         ("iHighTemperature", c_uint32),  # 最高温度，范围为：-273~9999摄氏度（1~手动模式下生效）
         ("iLowTemperature", c_uint32),  # 最低温度，范围为：-273~9999摄氏度（1~手动模式下生效）
-        ("byRes", c_byte * 8)
+        ("byRes", c_byte * 8),
     ]
 
 
 class NET_DVR_CAMERAPARAMCFG_EX(Structure):
-    """
-    前端参数配置结构体
-    """
+    """前端参数配置结构体."""
+
     _fields_ = [
         ("dwSize", c_uint32),  # 结构体大小
         ("struVideoEffect", NET_DVR_VIDEOEFFECT),  # 亮度、对比度、饱和度、锐度、色调配置
@@ -2086,7 +2167,7 @@ class NET_DVR_CAMERAPARAMCFG_EX(Structure):
         ("byVerticalFOV", c_byte),  # 垂直视场角
         ("byBrightnessSuddenChangeSuppression", c_byte),  # 亮度突变抑制
         ("byGPSEnabled", c_byte),  # GPS开关使能
-        ("byRes2", c_byte * 155)  # 保留字段
+        ("byRes2", c_byte * 155),  # 保留字段
     ]
 
 
@@ -2094,7 +2175,10 @@ class NET_DVR_FOCUSMODE_CFG(Structure):
     _fields_ = [
         ("dwSize", c_uint32),
         ("byFocusMode", c_byte),  # 聚焦模式，0-自动，1-手动，2-半自动
-        ("byAutoFocusMode", c_byte),  # 自动聚焦模式，0-关，1-模式A，2-模式B，3-模式AB，4-模式C 自动聚焦模式，需要在聚焦模式为自动时才显示
+        (
+            "byAutoFocusMode",
+            c_byte,
+        ),  # 自动聚焦模式，0-关，1-模式A，2-模式B，3-模式AB，4-模式C 自动聚焦模式，需要在聚焦模式为自动时才显示
         ("wMinFocusDistance", c_uint16),  # 最小聚焦距离，单位CM, 0-自动，0xffff-无穷远
         ("byZoomSpeedLevel", c_byte),  # 变倍速度，为实际取值，1-3
         ("byFocusSpeedLevel", c_byte),  # 聚焦速度，为实际取值，1-3
@@ -2108,14 +2192,17 @@ class NET_DVR_FOCUSMODE_CFG(Structure):
         ("byFocusSensitivity", c_byte),  # 聚焦灵敏度，范围[0,2]，聚焦模式为自动、半自动时生效
         ("byRes1", c_byte * 2),
         ("dwRelativeFocusPos", c_uint32),  # 相对focus值，其低16位表示聚焦值，0~4000；高16位代表当前聚焦值获取时的温度值
-        ("byRes", c_byte * 48)
+        ("byRes", c_byte * 48),
     ]
 
 
 class NET_DVR_IPDEVINFO_V31(Structure):
     _fields_ = [
         ("byEnable", c_byte),  # 该通道是否启用
-        ("byProType", c_byte),  # 协议类型(默认为私有协议)，0- 私有协议，1- 松下协议，2- 索尼，更多协议通过NET_DVR_GetIPCProtoList获取
+        (
+            "byProType",
+            c_byte,
+        ),  # 协议类型(默认为私有协议)，0- 私有协议，1- 松下协议，2- 索尼，更多协议通过NET_DVR_GetIPCProtoList获取
         ("byEnableQuickAdd", c_byte),  # 0-不支持快速添加；1-使用快速添加
         ("byRes1", c_byte),  # 保留，置为0
         ("sUserName", c_byte * NAME_LEN),  # 用户名
@@ -2125,41 +2212,44 @@ class NET_DVR_IPDEVINFO_V31(Structure):
         ("wDVRPort", c_uint16),  # 端口号
         ("szDeviceID", c_byte * 32),  # 设备ID
         ("byEnableTiming", c_byte),  # 0-保留，1-不启用NVR对IPC自动校时，2-启用NVR对IPC自动校时
-        ("byCertificateValidation", c_byte)  # 0-不启用证书验证 1-启用证书验证
+        ("byCertificateValidation", c_byte),  # 0-不启用证书验证 1-启用证书验证
     ]
 
 
 class NET_DVR_IPCHANINFO(Structure):
     _fields_ = [
-        ('byEnable', c_byte),  # 该通道是否在线
-        ('byIPID', c_byte),  # IP设备ID低8位，当设备ID为0时表示通道不可用
-        ('byChannel', c_byte),  # 通道号
-        ('byIPIDHigh', c_byte),  # IP设备ID的高8位
-        ('byTransProtocol', c_byte),  # 传输协议类型0-TCP/auto(具体有设备决定)，1-UDP 2-多播 3-仅TCP 4-auto
-        ('byGetStream', c_byte),  # 是否对该通道取流，0-是，1-否
-        ('byres', c_byte * 30)  # 保留
+        ("byEnable", c_byte),  # 该通道是否在线
+        ("byIPID", c_byte),  # IP设备ID低8位，当设备ID为0时表示通道不可用
+        ("byChannel", c_byte),  # 通道号
+        ("byIPIDHigh", c_byte),  # IP设备ID的高8位
+        ("byTransProtocol", c_byte),  # 传输协议类型0-TCP/auto(具体有设备决定)，1-UDP 2-多播 3-仅TCP 4-auto
+        ("byGetStream", c_byte),  # 是否对该通道取流，0-是，1-否
+        ("byres", c_byte * 30),  # 保留
     ]
 
 
 class NET_DVR_IPCHANINFO_V40(Structure):
     _fields_ = [
-        ('byEnable', c_byte),  # IP通道在线状态，是一个只读的属性；0表示HDVR或者NVR设备的数字通道连接对应的IP设备失败，该通道不在线；1表示连接成功，该通道在线
-        ('byRes1', c_byte),  # 保留，置为0
-        ('wIPID', c_uint16),  # IP设备ID
-        ('dwChannel', c_uint32),
+        (
+            "byEnable",
+            c_byte,
+        ),  # IP通道在线状态，是一个只读的属性；0表示HDVR或者NVR设备的数字通道连接对应的IP设备失败，该通道不在线；1表示连接成功，该通道在线
+        ("byRes1", c_byte),  # 保留，置为0
+        ("wIPID", c_uint16),  # IP设备ID
+        ("dwChannel", c_uint32),
         # IP设备的通道号，例如设备A（HDVR或者NVR设备）的IP通道01，对应的是设备B（DVS）里的通道04，则byChannel=4，如果前端接的是IPC则byChannel=1
-        ('byTransProtocol', c_byte),  # 传输协议类型：0- TCP，1- UDP，2- 多播，0xff- auto(自动)
-        ('byTransMode', c_byte),  # 传输码流模式：0- 主码流，1- 子码流
-        ('byFactoryType', c_byte),  # 前端设备厂家类型
-        ('byRes', c_byte * 241)  # 保留，置为0
+        ("byTransProtocol", c_byte),  # 传输协议类型：0- TCP，1- UDP，2- 多播，0xff- auto(自动)
+        ("byTransMode", c_byte),  # 传输码流模式：0- 主码流，1- 子码流
+        ("byFactoryType", c_byte),  # 前端设备厂家类型
+        ("byRes", c_byte * 241),  # 保留，置为0
     ]
 
 
 class NET_DVR_GET_STREAM_UNION(Union):
     _fields_ = [
-        ('struChanInfo', NET_DVR_IPCHANINFO),  # IP通道信息
-        ('struIPChan', NET_DVR_IPCHANINFO_V40),  # 直接从设备取流（扩展）
-        ('byUnionLen', c_byte * 492)  # 直接从设备取流（扩展）
+        ("struChanInfo", NET_DVR_IPCHANINFO),  # IP通道信息
+        ("struIPChan", NET_DVR_IPCHANINFO_V40),  # 直接从设备取流（扩展）
+        ("byUnionLen", c_byte * 492),  # 直接从设备取流（扩展）
     ]
 
 
@@ -2167,7 +2257,7 @@ class NET_DVR_STREAM_MODE(Structure):
     _fields_ = [
         ("byGetStreamType", c_byte),  # 取流方式
         ("byRes", c_byte * 3),  # 保留，置为0
-        ("uGetStream", NET_DVR_GET_STREAM_UNION)  # 不同取流方式联合体
+        ("uGetStream", NET_DVR_GET_STREAM_UNION),  # 不同取流方式联合体
     ]
 
 
@@ -2181,7 +2271,7 @@ class NET_DVR_IPPARACFG_V40(Structure):
         ("byAnalogChanEnable", c_byte * MAX_CHANNUM_V30),  # 模拟通道资源是否启用，从低到高表示1-64通道：0-禁用，1-启用
         ("struIPDevInfo", NET_DVR_IPDEVINFO_V31 * MAX_IP_DEVICE_V40),  # IP设备信息，下标0对应设备IP ID为1
         ("struStreamMode", NET_DVR_STREAM_MODE * MAX_CHANNUM_V30),  # 取流模式
-        ("byRes2", c_byte * 20)  # 保留，置为0
+        ("byRes2", c_byte * 20),  # 保留，置为0
     ]
 
 
@@ -2189,7 +2279,7 @@ class NET_DVR_DISKSTATE(Structure):
     _fields_ = [
         ("dwVolume", c_uint32),  # 硬盘的容量
         ("dwFreeSpace", c_uint32),  # 硬盘的剩余空间
-        ("dwHardDiskStatic", c_uint32)  # 硬盘的状态，按位: 1-休眠, 2-不正常, 3-休眠硬盘出错
+        ("dwHardDiskStatic", c_uint32),  # 硬盘的状态，按位: 1-休眠, 2-不正常, 3-休眠硬盘出错
     ]
 
 
@@ -2206,7 +2296,7 @@ class NET_DVR_CHANNELSTATE_V30(Structure):
         ("byExceedMaxLink", c_byte),  # 是否超出了单路6路连接数，0-未超出，1-超出
         ("byRes", c_byte * 3),  # 保留字节
         ("dwAllBitRate", c_uint32),  # 所有实际码率之和
-        ("dwChannelNo", c_uint32)  # 当前的通道号，0xffffffff表示无效
+        ("dwChannelNo", c_uint32),  # 当前的通道号，0xffffffff表示无效
     ]
 
 
@@ -2216,14 +2306,23 @@ class NET_DVR_WORKSTATE_V40(Structure):
         ("dwDeviceStatic", c_uint32),  # 设备的状态，0-正常，1-CPU占用率太高，超过85%，2-硬件错误，例如串口死掉
         ("struHardDiskStatic", NET_DVR_DISKSTATE * MAX_DISKNUM_V30),  # 硬盘状态，一次最多只能获取33个硬盘信息
         ("struChanStatic", NET_DVR_CHANNELSTATE_V30 * MAX_CHANNUM_V40),  # 通道的状态，从前往后顺序排列
-        ("dwHasAlarmInStatic", c_uint32 * MAX_ALARMIN_V40),  # 有报警的报警输入口，按值表示，按下标值顺序排列，值为0xffffffff时当前及后续值无效
-        ("dwHasAlarmOutStatic", c_uint32 * MAX_ALARMOUT_V40),  # 有报警输出的报警输出口，按值表示，按下标值顺序排列，值为0xffffffff时当前及后续值无效
+        (
+            "dwHasAlarmInStatic",
+            c_uint32 * MAX_ALARMIN_V40,
+        ),  # 有报警的报警输入口，按值表示，按下标值顺序排列，值为0xffffffff时当前及后续值无效
+        (
+            "dwHasAlarmOutStatic",
+            c_uint32 * MAX_ALARMOUT_V40,
+        ),  # 有报警输出的报警输出口，按值表示，按下标值顺序排列，值为0xffffffff时当前及后续值无效
         ("dwLocalDisplay", c_uint32),  # 本地显示状态，0-正常，1-不正常
-        ("byAudioInChanStatus", c_byte * MAX_AUDIO_V30),  # 按位表示语音通道的状态，0-未使用，1-使用中，第0位表示第1个语音通道
+        (
+            "byAudioInChanStatus",
+            c_byte * MAX_AUDIO_V30,
+        ),  # 按位表示语音通道的状态，0-未使用，1-使用中，第0位表示第1个语音通道
         ("byRes1", c_byte * 2),
         ("fHumidity", c_uint16),  # 传感器获知的湿度，范围: 0.0 ~ 100.0
         ("fTemperature", c_uint16),  # 传感器获知的温度，范围：-20.0 ~ 90.0
-        ("byRes", c_byte * 116)  # 保留
+        ("byRes", c_byte * 116),  # 保留
     ]
 
 
@@ -2235,7 +2334,7 @@ class NET_DVR_CHECK_DEV_STATE(Structure):
         ("dwTimeout", c_uint32),  # 定时检测设备工作状态，单位ms，为0时，表示使用默认值(30000)。最小值为1000
         ("fnStateCB", DEV_WORK_STATE_CB),
         ("pUserData", c_void_p),
-        ("byRes", c_ubyte * 60)
+        ("byRes", c_ubyte * 60),
     ]
 
 
@@ -2247,7 +2346,7 @@ class NET_DVR_PTZABSOLUTEEX_CFG(ctypes.Structure):
         ("fHorizontalSpeed", c_uint16),  # 水平转动速度：0.01-1000.00度/S
         ("fVerticalSpeed", c_uint16),  # 垂直转动速度：0.01-1000.00度/S
         ("byZoomType", c_byte),  # 镜头变倍配置类型0~ absoluteZoom，1~ focalLen
-        ("byRes", c_byte * 123)  # 保留字段
+        ("byRes", c_byte * 123),  # 保留字段
     ]
 
 
@@ -2255,14 +2354,14 @@ class NET_DVR_GBT28181_CHANINFO_CFG(Structure):
     _fields_ = [
         ("dwSize", c_uint32),  # 结构体大小
         ("szVideoChannelNumID", c_byte * 64),  # 设备视频通道编码ID：64字节字符串，仅限数字
-        ("byRes", c_byte * 256)  # 保留字段
+        ("byRes", c_byte * 256),  # 保留字段
     ]
 
 
 class NET_DVR_AES_KEY_INFO(Structure):
     _fields_ = [
         ("sAESKey", c_byte * 16),  # 码流加密密钥
-        ("byRes", c_byte * 64)  # 保留字节
+        ("byRes", c_byte * 64),  # 保留字节
     ]
 
 
@@ -2272,7 +2371,7 @@ class NET_DVR_CRUISEPOINT_COND(Structure):
         ("dwSize", c_uint32),
         ("dwChan", c_uint32),  # 通道号
         ("wRouteNo", c_uint16),  # 巡航路径号
-        ("byRes", c_byte * 30)
+        ("byRes", c_byte * 30),
     ]
 
 
@@ -2283,26 +2382,18 @@ class NET_DVR_CRUISEPOINT_PARAM(Structure):
         ("wDwell", c_uint16),
         ("bySpeed", c_byte),
         ("bySupport256PresetNo", c_byte),
-        ("byRes", c_byte * 6)
+        ("byRes", c_byte * 6),
     ]
 
 
 # 巡航路径配置结构体V40
 class NET_DVR_CRUISEPOINT_V40(Structure):
-    _fields_ = [
-        ("dwSize", c_uint32),
-        ("struCruisePoint", NET_DVR_CRUISEPOINT_PARAM * 128),
-        ("byRes", c_byte * 64)
-    ]
+    _fields_ = [("dwSize", c_uint32), ("struCruisePoint", NET_DVR_CRUISEPOINT_PARAM * 128), ("byRes", c_byte * 64)]
 
 
 # 巡航路径配置结构体V50
 class NET_DVR_CRUISEPOINT_V50(Structure):
-    _fields_ = [
-        ("dwSize", c_uint32),
-        ("struCruisePoint", NET_DVR_CRUISEPOINT_PARAM * 256),
-        ("byRes", c_byte * 64)
-    ]
+    _fields_ = [("dwSize", c_uint32), ("struCruisePoint", NET_DVR_CRUISEPOINT_PARAM * 256), ("byRes", c_byte * 64)]
 
 
 # RS485报警配置结构体
@@ -2318,21 +2409,26 @@ class NET_DVR_ALARM_RS485CFG(Structure):
         ("byParity", c_byte),  # 是否校验
         ("byFlowcontrol", c_byte),  # 是否流控
         ("byDuplex", c_byte),  # 半双工/全双工
-        ("byWorkMode", c_byte),  # 工作模式 (0-连接读卡器, 1-连接客户端, 2-连接扩展模块, 3-连接门禁主机, 4-连接梯控主机, 0xff-禁用)
+        (
+            "byWorkMode",
+            c_byte,
+        ),  # 工作模式 (0-连接读卡器, 1-连接客户端, 2-连接扩展模块, 3-连接门禁主机, 4-连接梯控主机, 0xff-禁用)
         ("byChannel", c_byte),  # 485通道号
         ("bySerialType", c_byte),  # 串口类型
-        ("byMode", c_byte),  # 模式 (0-连接读卡器, 1-连接客户端, 2-连接扩展模块, 3-连接门禁主机, 4-连接梯控主机, 0xff-禁用)
+        (
+            "byMode",
+            c_byte,
+        ),  # 模式 (0-连接读卡器, 1-连接客户端, 2-连接扩展模块, 3-连接门禁主机, 4-连接梯控主机, 0xff-禁用)
         ("byOutputDataType", c_byte),  # 输出数据类型
         ("byAddress", c_byte),  # 串口地址
         ("byStairsOutputDataType", c_byte),  # 0-无效，1-输出楼层号，2-输出卡号，当byMode为梯控主机时有效
-        ("byRes", c_byte * 32)  # 保留字节
+        ("byRes", c_byte * 32),  # 保留字节
     ]
 
 
 class NET_DVR_ALARMHOST_RS485_SLOT_CFG(Structure):
-    """
-    报警主机RS485槽位参数配置结构体
-    """
+    """报警主机RS485槽位参数配置结构体."""
+
     _fields_ = [
         ("dwSize", c_uint32),  # 结构体大小
         ("sDeviceName", c_byte * NAME_LEN),  # 前端设备名称
@@ -2341,7 +2437,7 @@ class NET_DVR_ALARMHOST_RS485_SLOT_CFG(Structure):
         ("wAddress", c_uint16),  # 设备地址
         ("byChannel", c_byte),  # 485通道号
         ("bySlotChan", c_byte),  # 槽位号
-        ("byRes", c_byte * 60)  # 保留字节
+        ("byRes", c_byte * 60),  # 保留字节
     ]
 
 

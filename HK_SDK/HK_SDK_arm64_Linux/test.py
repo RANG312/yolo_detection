@@ -6,9 +6,10 @@
 # @Software : PyCharm
 import os
 import platform
-import time
-from HCNetSDK import *
 import re
+import time
+
+from HCNetSDK import *
 
 # 系统环境标识
 WINDOWS_FLAG = True
@@ -20,7 +21,7 @@ def GetPlatform():
     @return:
     """
     sysstr = platform.system()
-    print('' + sysstr)
+    print("" + sysstr)
     if sysstr != "Windows":
         global WINDOWS_FLAG
         WINDOWS_FLAG = False
@@ -33,19 +34,19 @@ def SetSDKInitCfg():
     """
     # print(os.getcwd())
     if WINDOWS_FLAG:
-        strPath = os.getcwd().encode('gbk')
+        strPath = os.getcwd().encode("gbk")
         sdk_ComPath = NET_DVR_LOCAL_SDK_PATH()
         sdk_ComPath.sPath = strPath
         sdk.NET_DVR_SetSDKInitCfg(2, byref(sdk_ComPath))
-        sdk.NET_DVR_SetSDKInitCfg(3, create_string_buffer(strPath + b'\\libcrypto-1_1-x64.dll'))
-        sdk.NET_DVR_SetSDKInitCfg(4, create_string_buffer(strPath + b'\\libssl-1_1-x64.dll'))
+        sdk.NET_DVR_SetSDKInitCfg(3, create_string_buffer(strPath + b"\\libcrypto-1_1-x64.dll"))
+        sdk.NET_DVR_SetSDKInitCfg(4, create_string_buffer(strPath + b"\\libssl-1_1-x64.dll"))
     else:
-        strPath = os.getcwd().encode('utf-8')
+        strPath = os.getcwd().encode("utf-8")
         sdk_ComPath = NET_DVR_LOCAL_SDK_PATH()
         sdk_ComPath.sPath = strPath
         sdk.NET_DVR_SetSDKInitCfg(2, byref(sdk_ComPath))
-        sdk.NET_DVR_SetSDKInitCfg(3, create_string_buffer(strPath + b'/libcrypto.so.1.1'))
-        sdk.NET_DVR_SetSDKInitCfg(4, create_string_buffer(strPath + b'/libssl.so.1.1'))
+        sdk.NET_DVR_SetSDKInitCfg(3, create_string_buffer(strPath + b"/libcrypto.so.1.1"))
+        sdk.NET_DVR_SetSDKInitCfg(4, create_string_buffer(strPath + b"/libssl.so.1.1"))
 
 
 def login_v40(ip, port, username, password):
@@ -76,7 +77,9 @@ def login_v40(ip, port, username, password):
         print("Login failed, error code: %d" % sdk.NET_DVR_GetLastError())
         sdk.NET_DVR_Cleanup()
     else:
-        print(ip + '登录成功，设备序列号：%s' % str(struDeviceInfoV40.struDeviceV30.sSerialNumber, encoding="utf8"))
+        print(
+            ip + "登录成功，设备序列号：{}".format(str(struDeviceInfoV40.struDeviceV30.sSerialNumber, encoding="utf8"))
+        )
     return UserID
 
 
@@ -84,7 +87,7 @@ def get_device_status(UserId):
     """
     获取设备在线状态
     @param UserId: 用户ID，用于标识要查询的设备
-    @return: 无返回值，直接打印设备在线状态
+    @return: 无返回值，直接打印设备在线状态.
     """
     devStatus = sdk.NET_DVR_RemoteControl(UserId, NET_DVR_CHECK_USER_STATUS, None, 0)
     if devStatus:
@@ -110,11 +113,11 @@ def get_ip():
         num = 0
         for i in range(inum):
             # 解码字节数组为字符串
-            ip_address = struByteArray.raw[i * 64: (i + 1) * 64].decode('utf-8')
+            ip_address = struByteArray.raw[i * 64 : (i + 1) * 64].decode("utf-8")
             # 按空格分割字符串，获取每个IP地址
             ip_addresses = ip_address.split()
             for ip in enumerate(ip_addresses):
-                ip_addresses = re.findall(r'\b(?:\d{1,3}\.){3}\d{1,3}\b', ip_address)
+                ip_addresses = re.findall(r"\b(?:\d{1,3}\.){3}\d{1,3}\b", ip_address)
             for ip in ip_addresses:
                 print("网卡序号:", num, ", 网卡IP:", ip)
                 num += 1
@@ -129,7 +132,7 @@ def circle_get_pic(UserID):
     @param UserID:
     @return:
     """
-    sdf = '%Y%m%d%H%M%S'
+    sdf = "%Y%m%d%H%M%S"
     result = False
     count = 0
     while not result:
@@ -188,16 +191,17 @@ def get_cfg(UserID):
 
     p_int = c_int(0)
 
-    b_get_cfg = sdk.NET_DVR_GetDVRConfig(UserID, NET_DVR_GET_DEVICECFG_V40,
-                                         0xFFFFFFFF, byref(m_str_device_cfg), sizeof(m_str_device_cfg), byref(p_int))
+    b_get_cfg = sdk.NET_DVR_GetDVRConfig(
+        UserID, NET_DVR_GET_DEVICECFG_V40, 0xFFFFFFFF, byref(m_str_device_cfg), sizeof(m_str_device_cfg), byref(p_int)
+    )
     if not b_get_cfg:
         print("获取参数失败  错误码：", sdk.NET_DVR_GetLastError())
         return
 
     print("获取参数成功")
 
-    dvr_name = bytes(m_str_device_cfg.sDVRName).decode('gbk', 'ignore').strip('\x00')
-    serial_number = bytes(m_str_device_cfg.sSerialNumber).decode('utf-8').strip('\x00')
+    dvr_name = bytes(m_str_device_cfg.sDVRName).decode("gbk", "ignore").strip("\x00")
+    serial_number = bytes(m_str_device_cfg.sSerialNumber).decode("utf-8").strip("\x00")
 
     print("设备名称:", dvr_name, "设备序列号:", serial_number)
     print("模拟通道个数:", m_str_device_cfg.byChanNum)
@@ -247,8 +251,20 @@ def get_dev_time(UserID):
     if not b_get_time:
         print("获取时间参数失败，错误码：", sdk.NET_DVR_GetLastError())
         return
-    print("年:", m_time.dwYear, "\n月:", m_time.dwMonth, "\n日:", m_time.dwDay, "\n时:", m_time.dwHour,
-          "\n分:", m_time.dwMinute, "\n秒:", m_time.dwSecond)
+    print(
+        "年:",
+        m_time.dwYear,
+        "\n月:",
+        m_time.dwMonth,
+        "\n日:",
+        m_time.dwDay,
+        "\n时:",
+        m_time.dwHour,
+        "\n分:",
+        m_time.dwMinute,
+        "\n秒:",
+        m_time.dwSecond,
+    )
 
 
 def get_pic_cfg(UserID):
@@ -264,14 +280,15 @@ def get_pic_cfg(UserID):
     l_channel = c_int(1)
     p_int = c_int(0)
 
-    b_get_pic_cfg = sdk.NET_DVR_GetDVRConfig(UserID, NET_DVR_GET_PICCFG_V40, l_channel.value,
-                                             p_str_pic_cfg, sizeof(str_pic_cfg), byref(p_int))
+    b_get_pic_cfg = sdk.NET_DVR_GetDVRConfig(
+        UserID, NET_DVR_GET_PICCFG_V40, l_channel.value, p_str_pic_cfg, sizeof(str_pic_cfg), byref(p_int)
+    )
     if not b_get_pic_cfg:
         print("获取图像参数失败，错误码：", sdk.NET_DVR_GetLastError())
         return
 
     print("通道号:", l_channel.value)
-    print("通道名称:", bytes(str_pic_cfg.sChanName).decode('gbk').strip('\x00'))
+    print("通道名称:", bytes(str_pic_cfg.sChanName).decode("gbk").strip("\x00"))
     print("预览的图像是否显示OSD:", str_pic_cfg.dwShowOsd)
     enable_display = str_pic_cfg.struMotion.byEnableDisplay
 
@@ -281,8 +298,9 @@ def get_pic_cfg(UserID):
     str_pic_cfg.dwShowOsd = 0
     str_pic_cfg.struMotion.byEnableDisplay = 1
 
-    b_set_pic_cfg = sdk.NET_DVR_SetDVRConfig(UserID, NET_DVR_SET_PICCFG_V40, l_channel.value,
-                                             p_str_pic_cfg, sizeof(str_pic_cfg))
+    b_set_pic_cfg = sdk.NET_DVR_SetDVRConfig(
+        UserID, NET_DVR_SET_PICCFG_V40, l_channel.value, p_str_pic_cfg, sizeof(str_pic_cfg)
+    )
     if not b_set_pic_cfg:
         print("设置图像参数移动侦测高亮参数失败，错误码：", sdk.NET_DVR_GetLastError())
     else:
@@ -301,20 +319,15 @@ def get_usr_cfg(UserID):
     pInt = ctypes.pointer(ctypes.c_int(0))
 
     b_GetUserCfg = sdk.NET_DVR_GetDVRConfig(
-        UserID,
-        NET_DVR_GET_USERCFG_V30,
-        lChannel,
-        byref(usercfg),
-        sizeof(usercfg),
-        pInt
+        UserID, NET_DVR_GET_USERCFG_V30, lChannel, byref(usercfg), sizeof(usercfg), pInt
     )
 
     if not b_GetUserCfg:
         error_code = sdk.NET_DVR_GetLastError()
         print(f"获取用户参数失败，错误码：{error_code}")
         return
-    user_name = bytes(usercfg.struUser[0].sUserName).decode('utf8').strip('\x00')
-    user_password = bytes(usercfg.struUser[0].sPassword).decode('utf8').strip('\x00')
+    user_name = bytes(usercfg.struUser[0].sUserName).decode("utf8").strip("\x00")
+    user_password = bytes(usercfg.struUser[0].sPassword).decode("utf8").strip("\x00")
     print(f"name： {user_name}")
     print(f"password： {user_password}")
 
@@ -398,12 +411,16 @@ def get_rec_month(UserID):
 
     # 调用查询函数
     list_ref = c_int(0)
-    b_get_result = sdk.NET_DVR_GetDeviceConfig(UserID, NET_DVR_GET_MONTHLY_RECORD_DISTRIBUTION, 0,
-                                               byref(stru_mrd_sea_param), sizeof(NET_DVR_MRD_SEARCH_PARAM),
-                                               byref(list_ref),
-                                               byref(stru_mrd_sea_resu),
-                                               sizeof(NET_DVR_MRD_SEARCH_RESULT)
-                                               )
+    b_get_result = sdk.NET_DVR_GetDeviceConfig(
+        UserID,
+        NET_DVR_GET_MONTHLY_RECORD_DISTRIBUTION,
+        0,
+        byref(stru_mrd_sea_param),
+        sizeof(NET_DVR_MRD_SEARCH_PARAM),
+        byref(list_ref),
+        byref(stru_mrd_sea_resu),
+        sizeof(NET_DVR_MRD_SEARCH_RESULT),
+    )
 
     if not b_get_result:
         print("月历录像查询失败，错误码：", sdk.NET_DVR_GetLastError())
@@ -454,17 +471,17 @@ def getPTZcfg(UserID):
     pUsers = c_int(1)
 
     # 获取PTZ坐标信息
-    b_GetPTZ = sdk.NET_DVR_GetDVRConfig(UserID, NET_DVR_GET_PTZPOS, 1, byref(struPtTZPos), sizeof(struPtTZPos),
-                                        byref(pUsers))
+    b_GetPTZ = sdk.NET_DVR_GetDVRConfig(
+        UserID, NET_DVR_GET_PTZPOS, 1, byref(struPtTZPos), sizeof(struPtTZPos), byref(pUsers)
+    )
 
     if not b_GetPTZ:
         print("获取PTZ坐标信息失败，错误码：", sdk.NET_DVR_GetLastError())
     else:
-        # 
         print(struPtTZPos.wPanPos)
-        wPanPos = int(hex(struPtTZPos.wPanPos).replace('0x', ''), 16)
-        wTiltPos = int(hex(struPtTZPos.wTiltPos).replace('0x', ''), 16)
-        wZoomPos  = int(hex(struPtTZPos.wZoomPos).replace('0x', ''), 16)
+        wPanPos = int(hex(struPtTZPos.wPanPos).replace("0x", ""), 16)
+        wTiltPos = int(hex(struPtTZPos.wTiltPos).replace("0x", ""), 16)
+        wZoomPos = int(hex(struPtTZPos.wZoomPos).replace("0x", ""), 16)
 
         print("P参数：", wPanPos)
         print("T参数：", wTiltPos)
@@ -481,10 +498,12 @@ def getPTZcfg(UserID):
     #     print("设置PTZ坐标信息失败，错误码：", sdk.NET_DVR_GetLastError())
     # else:
     #     print("设置PTZ成功")
+
+
 def set_ptz_absolute_position(UserID, channel, target_pan_deg, target_tilt_deg, target_zoom):
     """
-    设置PTZ绝对位置（球机转到指定角度）
-    
+    设置PTZ绝对位置（球机转到指定角度）.
+
     @param UserID: 登录返回的用户ID
     @param channel: 通道号（通常为1）
     @param target_pan_deg: 目标水平角度（度），如 90.0
@@ -494,7 +513,7 @@ def set_ptz_absolute_position(UserID, channel, target_pan_deg, target_tilt_deg, 
     """
     # 1. 创建PTZ位置结构体
     struPtTzPos = NET_DVR_PTZPOS()
-    
+
     # 2. 设置操作类型（关键！）
     #    wAction含义：
     #    1 - 定位PTZ参数（同时设置P、T、Z）
@@ -503,28 +522,29 @@ def set_ptz_absolute_position(UserID, channel, target_pan_deg, target_tilt_deg, 
     #    4 - 仅定位Z参数
     #    5 - 定位PT参数（同时设置P和T）
     struPtTzPos.wAction = 3  # 同时设置水平、垂直、变焦
-    
+
     # 3. 将目标角度转换为SDK内部值（乘以100）
     #    注意：需要转换为整数类型（WORD是无符号16位整数）
-    struPtTzPos.wPanPos = c_ushort(int(target_pan_deg))      # 水平角度
-    struPtTzPos.wTiltPos = c_ushort(int(target_tilt_deg))    # 垂直角度
-    struPtTzPos.wZoomPos = c_ushort(int(target_zoom))        # 变焦倍率
-    
+    struPtTzPos.wPanPos = c_ushort(int(target_pan_deg))  # 水平角度
+    struPtTzPos.wTiltPos = c_ushort(int(target_tilt_deg))  # 垂直角度
+    struPtTzPos.wZoomPos = c_ushort(int(target_zoom))  # 变焦倍率
+
     # 4. 调用设置接口
     b_SetPTZ = sdk.NET_DVR_SetDVRConfig(
         UserID,
         NET_DVR_SET_PTZPOS,  # 设置PTZ位置命令
-        channel,              # 通道号
-        byref(struPtTzPos),   # 结构体指针
+        channel,  # 通道号
+        byref(struPtTzPos),  # 结构体指针
         sizeof(struPtTzPos),  # 结构体大小
     )
-    
+
     if not b_SetPTZ:
         print("设置PTZ坐标信息失败，错误码：", sdk.NET_DVR_GetLastError())
         return False
     else:
         print(f"设置PTZ成功：P={target_pan_deg}°, T={target_tilt_deg}°, Z={target_zoom}倍")
         return True
+
 
 def setPTZLOCKCFG(UserID):
     """
@@ -541,8 +561,9 @@ def setPTZLOCKCFG(UserID):
     pInt = c_int(0)
 
     # 获取云台锁定信息
-    b_GetPtzLockCfg = sdk.NET_DVR_GetDVRConfig(UserID, NET_DVR_GET_PTZLOCKCFG, lChannel, byref(struPtzLockCfg),
-                                               sizeof(struPtzLockCfg), byref(pInt))
+    b_GetPtzLockCfg = sdk.NET_DVR_GetDVRConfig(
+        UserID, NET_DVR_GET_PTZLOCKCFG, lChannel, byref(struPtzLockCfg), sizeof(struPtzLockCfg), byref(pInt)
+    )
 
     if not b_GetPtzLockCfg:
         print(f"获取云台锁定信息失败，错误码：{sdk.NET_DVR_GetLastError()}")
@@ -554,8 +575,9 @@ def setPTZLOCKCFG(UserID):
     # 设置云台锁定信息
     struPtzLockCfg.byWorkMode = 0  # 0- 解锁，1- 锁定
 
-    b_SetPtzLockCfg = sdk.NET_DVR_SetDVRConfig(UserID, NET_DVR_SET_PTZLOCKCFG, lChannel, byref(struPtzLockCfg),
-                                               sizeof(struPtzLockCfg))
+    b_SetPtzLockCfg = sdk.NET_DVR_SetDVRConfig(
+        UserID, NET_DVR_SET_PTZLOCKCFG, lChannel, byref(struPtzLockCfg), sizeof(struPtzLockCfg)
+    )
 
     if not b_SetPtzLockCfg:
         print(f"设置云台锁定信息失败，错误码：{sdk.NET_DVR_GetLastError()}")
@@ -589,8 +611,9 @@ def get_camera_para(UserID):
     struCameraParam.dwSize = sizeof(struCameraParam)
     lChannel = c_int(1)
     pInt = c_int(0)
-    b_GetCameraParam = sdk.NET_DVR_GetDVRConfig(UserID, NET_DVR_GET_CCDPARAMCFG_EX, lChannel, byref(struCameraParam),
-                                                sizeof(struCameraParam), byref(pInt))
+    b_GetCameraParam = sdk.NET_DVR_GetDVRConfig(
+        UserID, NET_DVR_GET_CCDPARAMCFG_EX, lChannel, byref(struCameraParam), sizeof(struCameraParam), byref(pInt)
+    )
     if not b_GetCameraParam:
         print("获取前端参数失败，错误码：" + str(sdk.NET_DVR_GetLastError()))
         return
@@ -599,7 +622,8 @@ def get_camera_para(UserID):
 
     struCameraParam.struCorridorMode.byEnableCorridorMode = 1
     b_SetCameraParam = sdk.NET_DVR_SetDVRConfig(
-        UserID, NET_DVR_SET_CCDPARAMCFG_EX, 1, byref(struCameraParam), sizeof(struCameraParam))
+        UserID, NET_DVR_SET_CCDPARAMCFG_EX, 1, byref(struCameraParam), sizeof(struCameraParam)
+    )
     if not b_SetCameraParam:
         print("设置前端参数失败，错误码：" + str(sdk.NET_DVR_GetLastError()))
         return
@@ -615,8 +639,9 @@ def getFocusMode(UserID):
     struFocusMode = NET_DVR_FOCUSMODE_CFG()
     struFocusMode.dwSize = sizeof(struFocusMode)
     pInt = c_int(0)
-    b_GetCameraParam = sdk.NET_DVR_GetDVRConfig(UserID, NET_DVR_GET_FOCUSMODECFG, 1, byref(struFocusMode),
-                                                sizeof(struFocusMode), byref(pInt))
+    b_GetCameraParam = sdk.NET_DVR_GetDVRConfig(
+        UserID, NET_DVR_GET_FOCUSMODECFG, 1, byref(struFocusMode), sizeof(struFocusMode), byref(pInt)
+    )
     if not b_GetCameraParam:
         print("获取快球聚焦模式失败，错误码：", sdk.NET_DVR_GetLastError())
         return
@@ -628,8 +653,9 @@ def getFocusMode(UserID):
     struFocusMode.byFocusDefinitionDisplay = 1
     struFocusMode.byFocusSpeedLevel = 3
 
-    b_SetCameraParam = sdk.NET_DVR_SetDVRConfig(UserID, NET_DVR_SET_FOCUSMODECFG, 1, byref(struFocusMode),
-                                                sizeof(struFocusMode))
+    b_SetCameraParam = sdk.NET_DVR_SetDVRConfig(
+        UserID, NET_DVR_SET_FOCUSMODECFG, 1, byref(struFocusMode), sizeof(struFocusMode)
+    )
     if not b_SetCameraParam:
         print("设置快球聚焦模式失败，错误码：", sdk.NET_DVR_GetLastError())
         return
@@ -648,8 +674,9 @@ def getIPChannelInfo(UserID):
     m_strIpparaCfg.dwSize = sizeof(m_strIpparaCfg)
 
     lpIpParaConfig = byref(m_strIpparaCfg)
-    bRet = sdk.NET_DVR_GetDVRConfig(UserID, NET_DVR_GET_IPPARACFG_V40, 0, lpIpParaConfig, sizeof(m_strIpparaCfg),
-                                    byref(pInt))
+    bRet = sdk.NET_DVR_GetDVRConfig(
+        UserID, NET_DVR_GET_IPPARACFG_V40, 0, lpIpParaConfig, sizeof(m_strIpparaCfg), byref(pInt)
+    )
     if not bRet:
         print("获取IP接入配置参数失败，错误码：", sdk.NET_DVR_GetLastError())
         return
@@ -663,8 +690,7 @@ def getIPChannelInfo(UserID):
         lChannel = channum
         pInt = c_int(0)
 
-        b_GetPicCfg = sdk.NET_DVR_GetDVRConfig(UserID, NET_DVR_GET_PICCFG_V40, lChannel, pStrPicCfg, sizeof(strPicCfg),
-                                               byref(pInt))
+        sdk.NET_DVR_GetDVRConfig(UserID, NET_DVR_GET_PICCFG_V40, lChannel, pStrPicCfg, sizeof(strPicCfg), byref(pInt))
         # if not b_GetPicCfg:
         #     print("获取图像参数失败，错误码：", sdk.NET_DVR_GetLastError())
         #     continue
@@ -672,12 +698,13 @@ def getIPChannelInfo(UserID):
         if m_strIpparaCfg.struStreamMode[iChannum].byGetStreamType == 0:
             print("--------------第", iChannum + 1, "个通道------------------")
             channel = m_strIpparaCfg.struStreamMode[iChannum].uGetStream.struChanInfo.byIPID + (
-                    m_strIpparaCfg.struStreamMode[iChannum].uGetStream.struChanInfo.byIPIDHigh * 256)
+                m_strIpparaCfg.struStreamMode[iChannum].uGetStream.struChanInfo.byIPIDHigh * 256
+            )
             print("channel:", channel)
             if channel > 0:
-                ip_addr = bytes(m_strIpparaCfg.struIPDevInfo[channel - 1].struIP.sIpV4).decode('utf8').strip('\x00')
+                ip_addr = bytes(m_strIpparaCfg.struIPDevInfo[channel - 1].struIP.sIpV4).decode("utf8").strip("\x00")
                 print("ip：", ip_addr)
-                name = bytes(strPicCfg.sChanName).decode('utf8').strip('\x00')
+                name = bytes(strPicCfg.sChanName).decode("utf8").strip("\x00")
                 print("name：", name)
 
             if m_strIpparaCfg.struStreamMode[iChannum].uGetStream.struChanInfo.byEnable == 1:
@@ -746,13 +773,14 @@ def get_GB28181_info(UserID):
     lpBytesReturned = pointer(c_int(0))
 
     # 3251对应它的宏定义
-    bRet = sdk.NET_DVR_GetDeviceConfig(UserID, 3251, 1, lpInBuffer,
-                                       sizeof(stream_info), lpBytesReturned, lpOutBuffer, sizeof(gbt28181_chaninfo_cfg))
+    bRet = sdk.NET_DVR_GetDeviceConfig(
+        UserID, 3251, 1, lpInBuffer, sizeof(stream_info), lpBytesReturned, lpOutBuffer, sizeof(gbt28181_chaninfo_cfg)
+    )
 
     if not bRet:
         print("获取失败,错误码：", sdk.NET_DVR_GetLastError())
         return
-    print(bytes(gbt28181_chaninfo_cfg.szVideoChannelNumID).decode('utf8').strip('\x00'))
+    print(bytes(gbt28181_chaninfo_cfg.szVideoChannelNumID).decode("utf8").strip("\x00"))
 
 
 def get_aes_info(UserID):
@@ -766,8 +794,9 @@ def get_aes_info(UserID):
     pInt = c_int(0)
 
     # 假设pyhikvision提供了类似的方法
-    b_GetCfg = sdk.NET_DVR_GetDVRConfig(UserID, NET_DVR_GET_AES_KEY, 0xFFFFFFFF, pnet_dvr_aes_key_info,
-                                        sizeof(net_dvr_aes_key_info), byref(pInt))
+    b_GetCfg = sdk.NET_DVR_GetDVRConfig(
+        UserID, NET_DVR_GET_AES_KEY, 0xFFFFFFFF, pnet_dvr_aes_key_info, sizeof(net_dvr_aes_key_info), byref(pInt)
+    )
 
     if not b_GetCfg:
         print("获取码流加密失败  错误码：", sdk.NET_DVR_GetLastError())
@@ -796,9 +825,16 @@ def getCruisePoint(UserID):
     lpStatusList = pointer(pInt)
 
     # 调用SDK的NET_DVR_GetDeviceConfig方法
-    flag = sdk.NET_DVR_GetDeviceConfig(UserID, 6714, 1, byref(struCruisepointCond), sizeof(struCruisepointCond),
-                                       lpStatusList, byref(struCruisepointV40), sizeof(struCruisepointV40)
-                                       )
+    flag = sdk.NET_DVR_GetDeviceConfig(
+        UserID,
+        6714,
+        1,
+        byref(struCruisepointCond),
+        sizeof(struCruisepointCond),
+        lpStatusList,
+        byref(struCruisepointV40),
+        sizeof(struCruisepointV40),
+    )
 
     if not flag:
         iErr = sdk.NET_DVR_GetLastError()
@@ -810,7 +846,7 @@ def getPictoPointer(UserID):
     """
     抓图保存到缓冲区、文件
     @param UserID: 用户ID
-    @return: None
+    @return: None.
     """
     # 初始化NET_DVR_JPEGPARA结构
     jpegpara = NET_DVR_JPEGPARA()
@@ -835,7 +871,7 @@ def getPictoPointer(UserID):
     image_size = ret.value
     filename = "captured_image.jpg"
     # 将缓冲区中的数据保存为JPEG文件
-    with open(filename, 'wb') as f:
+    with open(filename, "wb") as f:
         f.write(bytearray(buff1)[:image_size])
 
     print(f"图像已保存为 {filename}")
@@ -845,61 +881,58 @@ def getRs485Cfg(lUserID):
     """
     获取报警主机RS485参数
     @param lUserID: 用户ID
-    @return: None
+    @return: None.
     """
     rs485CFG = NET_DVR_ALARM_RS485CFG()
     rs485CFG.dwSize = sizeof(rs485CFG)
     pointer = byref(rs485CFG)
     pInt1 = c_int(0)
     # 调用SDK的NET_DVR_GetDVRConfig方法
-    bGetRs485 = sdk.NET_DVR_GetDVRConfig(lUserID, NET_DVR_GET_ALARM_RS485CFG, 1, pointer, rs485CFG.dwSize,
-                                         byref(pInt1))
+    bGetRs485 = sdk.NET_DVR_GetDVRConfig(lUserID, NET_DVR_GET_ALARM_RS485CFG, 1, pointer, rs485CFG.dwSize, byref(pInt1))
     if not bGetRs485:
         err = sdk.NET_DVR_GetLastError()
         print("获取报警主机RS485参数失败！错误号：", err)
         return
     else:
-        print("前端设备名称：", bytes(rs485CFG.sDeviceName).decode('utf8').strip('\x00'))
+        print("前端设备名称：", bytes(rs485CFG.sDeviceName).decode("utf8").strip("\x00"))
     return
 
 
 def getRs485SlotInfo(UserID):
-    """
-    获取报警主机RS485槽位参数
-    """
+    """获取报警主机RS485槽位参数."""
     strRs485SlotCFG = NET_DVR_ALARMHOST_RS485_SLOT_CFG()
     strRs485SlotCFG.dwSize = sizeof(strRs485SlotCFG)
     pRs485SlotCFG = pointer(strRs485SlotCFG)
     pInt1 = pointer(c_int(0))
     Schannel = "0000000100000001"  # 高2字节表示485通道号，低2字节表示槽位号，都从1开始
     channel = int(Schannel, 2)
-    bRs485Slot = sdk.NET_DVR_GetDVRConfig(UserID, NET_DVR_GET_ALARMHOST_RS485_SLOT_CFG, channel,
-                                          pRs485SlotCFG, strRs485SlotCFG.dwSize, pInt1)
+    bRs485Slot = sdk.NET_DVR_GetDVRConfig(
+        UserID, NET_DVR_GET_ALARMHOST_RS485_SLOT_CFG, channel, pRs485SlotCFG, strRs485SlotCFG.dwSize, pInt1
+    )
     if not bRs485Slot:
         print("获取报警主机RS485槽位参数失败！错误号：", sdk.NET_DVR_GetLastError())
         return
     print(pRs485SlotCFG.contents)
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     # 获取系统平台
     GetPlatform()
 
     # 加载库,先加载依赖库
     if WINDOWS_FLAG:
-        os.chdir(r'./lib/win')
-        sdk = ctypes.CDLL(r'./HCNetSDK.dll')
+        os.chdir(r"./lib/win")
+        sdk = ctypes.CDLL(r"./HCNetSDK.dll")
     else:
-        os.chdir(r'./lib/linux')
-        sdk = cdll.LoadLibrary(r'./libhcnetsdk.so')
+        os.chdir(r"./lib/linux")
+        sdk = cdll.LoadLibrary(r"./libhcnetsdk.so")
 
     SetSDKInitCfg()  # 设置组件库和SSL库加载路径
 
     # 初始化
     sdk.NET_DVR_Init()
     # 启用SDK写日志
-    sdk.NET_DVR_SetLogToFile(3, bytes('./SdkLog_Python/', encoding="utf-8"), False)
+    sdk.NET_DVR_SetLogToFile(3, bytes("./SdkLog_Python/", encoding="utf-8"), False)
 
     # 通用参数配置
     sdkCfg = NET_DVR_LOCAL_GENERAL_CFG()
@@ -920,10 +953,10 @@ if __name__ == '__main__':
     # search_record_time(UserID)  # 录像起止时间查询
     # get_rec_month(UserID)  # 月历录像查询
     # get_gis_info(UserID)  # 球机GIS信息获取
-    #set_ptz_absolute_position(UserID, 1, 0.0, 12897.0, 1.0)
+    # set_ptz_absolute_position(UserID, 1, 0.0, 12897.0, 1.0)
     getPTZcfg(UserID)  # 球机PTZ参数获取设置
     # 示例1：将球机转到水平90度、垂直30度、5倍变焦的位置
-    #set_ptz_absolute_position(UserID, 1, 0.0, 0.0, 1.0)  还原到初始位置
+    # set_ptz_absolute_position(UserID, 1, 0.0, 0.0, 1.0)  还原到初始位置
     # setPTZLOCKCFG(UserID)  # 设置云台锁定信息
     # PTZControlOther(UserID)  # 云台控制
     # get_camera_para(UserID)  # 获取(设置)前端参数(扩展)
@@ -944,4 +977,3 @@ if __name__ == '__main__':
 
     # 释放SDK资源，退出程序时调用
     sdk.NET_DVR_Cleanup()
-
